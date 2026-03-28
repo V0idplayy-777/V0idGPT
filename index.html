@@ -8,39 +8,23 @@
     <link rel="icon" type="image/png" href="favicon.png">
 
     <style>
-        body {
+        html, body {
             margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: #0a0a0a;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        h1 {
-            margin-bottom: 15px;
-            font-size: 24px;
+            padding: 0;
+            height: 100%;
         }
 
         iframe {
+            width: 100vw;
+            height: 100vh;
             border: none;
-            box-shadow: 0 0 25px rgba(0,0,0,0.7);
-            border-radius: 10px;
+            display: block;
         }
     </style>
 </head>
 <body>
 
-    <h1>V0idGPT</h1>
-
-    <iframe 
-        src="https://chat.ragmyai.com/v0idgpt" 
-        width="300" 
-        height="400">
-    </iframe>
+    <iframe src="https://chat.ragmyai.com/v0idgpt"></iframe>
 
 </body>
 </html>
