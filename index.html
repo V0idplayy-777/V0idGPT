@@ -32,6 +32,29 @@
             font-size: 16px;
             color: #cccccc;
         }
+
+        .btn {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 14px 28px;
+            font-size: 16px;
+            color: white;
+            background: linear-gradient(135deg, #ff0000, #990000);
+            border: none;
+            border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.7);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
@@ -39,6 +62,10 @@
         <img src="image.png" alt="Image">
         <h1>Sorry</h1>
         <p>I have decided to unpublish this because I couldn't be bothered lol</p>
+
+        <a class="btn" href="https://forms.gle/iHP295CUV4FRyU5s5" target="_blank">
+            Vote To Bring Back V0idGPT
+        </a>
     </div>
 </body>
 </html>
