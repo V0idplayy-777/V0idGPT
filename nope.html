@@ -12,6 +12,8 @@
             margin: 0;
             padding: 0;
             height: 100%;
+            overflow: hidden;
+            background: #000;
         }
 
         iframe {
@@ -20,9 +22,50 @@
             border: none;
             display: block;
         }
+
+        /* === AD COVER OVERLAY - CHANGE THESE VARIABLES === */
+        :root {
+            --cover-width: 40vw;      
+            --cover-height: 80px;     
+            --cover-left: 415px;      
+            --cover-bottom: 50px;     
+        }
+
+        #ad-cover {
+            position: fixed;
+            bottom: var(--cover-bottom);
+            left: var(--cover-left);
+            width: var(--cover-width);
+            height: var(--cover-height);
+            z-index: 99999;
+            pointer-events: auto;
+            overflow: hidden;
+        }
+
+        #ad-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
     </style>
 </head>
 <body>
+
+    <iframe src="https://chat.ragmyai.com/v0idgpt"></iframe>
+
+    <!-- Local image overlay (ad.png must be in the same folder as this HTML file) -->
+    <div id="ad-cover">
+        <a href="https://v0idplayy-777.github.io/V0idGPT/" target="_blank">
+            <img src="ad.png" 
+                 alt="V0idGPT Cover" 
+                 border="0">
+        </a>
+    </div>
+
+</body>
+</html>
 
     <iframe src="https://chat.ragmyai.com/v0idgpt"></iframe>
 
