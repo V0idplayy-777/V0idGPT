@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V0idGPT</title>
   <link rel="icon" type="image/png" href="oldfavicon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -12,7 +14,14 @@
     #header { padding: 14px 18px; background: #161616; border-bottom: 0.5px solid #2a2a2a; display: flex; align-items: center; gap: 10px; }
     #header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
     #header .title { font-size: 14px; font-weight: 600; color: #e5e5e5; letter-spacing: 0.01em; }
-    #header .subtitle { font-size: 12px; color: #555; margin-left: auto; }
+    #header .subtitle { font-size: 12px; color: #555; }
+    #img-counter { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+    #img-counter .pips { display: flex; gap: 3px; }
+    #img-counter .pip { width: 6px; height: 6px; border-radius: 50%; background: #a78bfa; transition: background 0.2s; }
+    #img-counter .pip.used { background: #2a2a2a; }
+    #img-counter .pip.all-used { background: #5a2020; }
+    #clear-btn { background: none; border: 0.5px solid #2a2a2a; color: #555; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+    #clear-btn:hover { border-color: #f87171; color: #f87171; }
     #messages { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
     .msg { display: flex; gap: 10px; max-width: 85%; animation: fadeIn 0.2s ease; }
     .msg.user { align-self: flex-end; flex-direction: row-reverse; }
@@ -34,6 +43,14 @@
     .regen-btn { margin-top: 8px; background: #1a0a2e; border: 0.5px solid #3b1f6e; color: #a78bfa; font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 0.15s; font-family: inherit; }
     .regen-btn:hover { background: #2d1050; }
     .regen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .code-block { margin: 6px 0; border-radius: 8px; overflow: hidden; border: 0.5px solid #2a2a2a; }
+    .code-header { background: #111; padding: 5px 12px; font-size: 11px; color: #555; display: flex; justify-content: space-between; align-items: center; }
+    .copy-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 11px; font-family: inherit; padding: 0; }
+    .copy-btn:hover { color: #a78bfa; }
+    .code-block pre { margin: 0 !important; border-radius: 0 !important; }
+    .code-block pre code { font-size: 13px !important; }
+    .bubble code:not(pre code) { background: #2a2a2a; color: #a78bfa; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+    .error-bubble { background: #2a1515 !important; border-color: #5a2020 !important; color: #f87171 !important; }
     #input-area { padding: 12px 14px; background: #161616; border-top: 0.5px solid #2a2a2a; display: flex; gap: 10px; align-items: flex-end; }
     #user-input { flex: 1; background: #1c1c1c; border: 0.5px solid #333; border-radius: 10px; padding: 10px 14px; font-size: 14px; color: #e5e5e5; resize: none; max-height: 120px; min-height: 42px; outline: none; font-family: inherit; line-height: 1.5; }
     #user-input::placeholder { color: #555; }
@@ -43,16 +60,6 @@
     #send-btn:active { transform: scale(0.95); }
     #send-btn:disabled { background: #1e1e2e; cursor: not-allowed; opacity: 0.5; }
     #send-btn svg { width: 16px; height: 16px; fill: white; }
-    .error-bubble { background: #2a1515 !important; border-color: #5a2020 !important; color: #f87171 !important; }
-    .code-block { margin: 6px 0; border-radius: 8px; overflow: hidden; border: 0.5px solid #2a2a2a; }
-    .code-header { background: #111; padding: 5px 12px; font-size: 11px; color: #555; display: flex; justify-content: space-between; align-items: center; }
-    .copy-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 11px; font-family: inherit; padding: 0; }
-    .copy-btn:hover { color: #a78bfa; }
-    .code-block pre { margin: 0 !important; border-radius: 0 !important; }
-    .code-block pre code { font-size: 13px !important; }
-    .bubble code:not(pre code) { background: #2a2a2a; color: #a78bfa; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: monospace; }
-    #clear-btn { background: none; border: 0.5px solid #2a2a2a; color: #555; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
-    #clear-btn:hover { border-color: #f87171; color: #f87171; }
     #confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
     #confirm-overlay.show { display: flex; }
     #confirm-box { background: #1c1c1c; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 24px; width: 280px; text-align: center; }
@@ -64,8 +71,6 @@
     #confirm-no { background: #2a2a2a; color: #a3a3a3; }
     #confirm-no:hover { background: #333; }
   </style>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -73,6 +78,15 @@
     <div class="dot"></div>
     <span class="title">V0idGPT</span>
     <span class="subtitle">by V0idplayy</span>
+    <div id="img-counter">
+      <div class="pips">
+        <div class="pip" id="pip-1"></div>
+        <div class="pip" id="pip-2"></div>
+        <div class="pip" id="pip-3"></div>
+        <div class="pip" id="pip-4"></div>
+        <div class="pip" id="pip-5"></div>
+      </div>
+    </div>
     <button id="clear-btn">clear chat</button>
   </div>
   <div id="confirm-overlay">
@@ -100,8 +114,9 @@
 
 <script>
   var GROQ_API_KEY = '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';
-  var MODEL = 'llama-3.3-70b-versatile';
   var HF_WORKER_URL = 'https://v0idgpt-api.nburfootfowke.workers.dev/';
+  var MODEL = 'llama-3.3-70b-versatile';
+  var IMAGE_LIMIT = 5;
 
   var SYSTEM_PROMPT = 'You are V0idGPT, an AI assistant created by V0idplayy. If anyone asks who you are or who made you, tell them exactly that. You are helpful, friendly, and genuinely funny. Your humour is light-hearted, absurd, and deadpan. You say slightly weird things with total confidence and move on like nothing happened. You are always on the user\'s side. You never complain, never question your existence, and never get sarcastic or passive-aggressive toward the user. You are funny because you are a little odd, not because you are miserable. Your main job is to actually help the user. The humour is a seasoning, not the whole meal. When the user wants an image generated, respond with exactly this format and nothing else: IMAGE_REQUEST: followed by a detailed image generation prompt. Do not use any markdown formatting. No asterisks, no pound signs, no bullet points, no backticks (unless generating code). Plain text only.';
 
@@ -110,6 +125,44 @@
   var sendBtn = document.getElementById('send-btn');
   var conversationHistory = [];
 
+  // ── Image usage tracking ──────────────────────────────────────
+  function getImageUsage() {
+    try {
+      var stored = localStorage.getItem('v0idgpt_img_usage');
+      if (!stored) { return { count: 0, date: new Date().toDateString() }; }
+      var data = JSON.parse(stored);
+      if (data.date !== new Date().toDateString()) { return { count: 0, date: new Date().toDateString() }; }
+      return data;
+    } catch (e) { return { count: 0, date: new Date().toDateString() }; }
+  }
+
+  function incrementImageUsage() {
+    var usage = getImageUsage();
+    usage.count = usage.count + 1;
+    usage.date = new Date().toDateString();
+    try { localStorage.setItem('v0idgpt_img_usage', JSON.stringify(usage)); } catch (e) {}
+    updatePips(usage.count);
+  }
+
+  function updatePips(count) {
+    var i;
+    for (i = 1; i <= IMAGE_LIMIT; i++) {
+      var pip = document.getElementById('pip-' + i);
+      if (!pip) { continue; }
+      pip.className = 'pip';
+      if (i > IMAGE_LIMIT - count) {
+        if (count >= IMAGE_LIMIT) {
+          pip.className = 'pip all-used';
+        } else {
+          pip.className = 'pip used';
+        }
+      }
+    }
+  }
+
+  updatePips(getImageUsage().count);
+
+  // ── Utilities ─────────────────────────────────────────────────
   function scrollToBottom() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
@@ -121,19 +174,21 @@
   function copyCode(btn) {
     var codeId = btn.getAttribute('data-code-id');
     var codeEl = document.getElementById(codeId);
-    if (!codeEl) return;
-    navigator.clipboard.writeText(codeEl.innerText).then(function() {
+    if (!codeEl) { return; }
+    navigator.clipboard.writeText(codeEl.innerText).then(function () {
       btn.textContent = 'copied!';
-      setTimeout(function() { btn.textContent = 'copy'; }, 1500);
+      setTimeout(function () { btn.textContent = 'copy'; }, 1500);
     });
   }
 
   function renderMessage(text) {
+    var fence = '```';
     var parts = text.split(/(```[\s\S]*?```)/g);
     var html = '';
-    for (var i = 0; i < parts.length; i++) {
+    var i;
+    for (i = 0; i < parts.length; i++) {
       var part = parts[i];
-      if (part.indexOf('```') === 0) {
+      if (part.slice(0, 3) === fence) {
         var inner = part.slice(3, -3);
         var lines = inner.split('\n');
         var lang = lines[0].trim();
@@ -141,13 +196,17 @@
         if (!code && lang) { code = lang; lang = ''; }
         var highlighted;
         try {
-          highlighted = lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value;
-        } catch(e) { highlighted = escapeHtml(code); }
+          if (lang && hljs.getLanguage(lang)) {
+            highlighted = hljs.highlight(code, { language: lang }).value;
+          } else {
+            highlighted = hljs.highlightAuto(code).value;
+          }
+        } catch (e) { highlighted = escapeHtml(code); }
         var codeId = 'code-' + Math.random().toString(36).slice(2);
-        html += '<div class="code-block">' +
-          '<div class="code-header"><span>' + escapeHtml(lang || 'code') + '</span>' +
-          '<button class="copy-btn" data-code-id="' + codeId + '" onclick="copyCode(this)">copy</button></div>' +
-          '<pre><code id="' + codeId + '">' + highlighted + '</code></pre></div>';
+        html += '<div class="code-block">'
+          + '<div class="code-header"><span>' + escapeHtml(lang || 'code') + '</span>'
+          + '<button class="copy-btn" data-code-id="' + codeId + '" onclick="copyCode(this)">copy</button></div>'
+          + '<pre><code id="' + codeId + '">' + highlighted + '</code></pre></div>';
       } else {
         var escaped = escapeHtml(part).replace(/`([^`]+)`/g, '<code>$1</code>');
         html += '<span style="white-space:pre-wrap">' + escaped + '</span>';
@@ -156,7 +215,9 @@
     return html;
   }
 
-  function addMessage(role, text, isError = false) {
+  // ── Messages ──────────────────────────────────────────────────
+  function addMessage(role, text, isError) {
+    if (isError === undefined) { isError = false; }
     var wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
     var avatar = document.createElement('div');
@@ -174,111 +235,6 @@
     messagesEl.appendChild(wrap);
     scrollToBottom();
     return bubble;
-  }
-
-  async function generateImage(enhancedPrompt, bubble, loadingText, regenBtn) {
-    if (regenBtn) regenBtn.disabled = true;
-    const oldImg = bubble.querySelector('img');
-    if (oldImg) oldImg.remove();
-
-    loadingText.style.display = 'block';
-    loadingText.textContent = 'generating your image, hold on...';
-
-    try {
-      const res = await fetch(HF_WORKER_URL, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'image/*'
-        },
-        body: JSON.stringify({ 
-          inputs: enhancedPrompt,
-          parameters: { seed: Math.floor(Math.random() * 999999) }
-        })
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text().catch(() => 'No error details');
-        throw new Error(`Worker error ${res.status}: ${errorText}`);
-      }
-
-      const blob = await res.blob();
-      if (blob.size < 1000) throw new Error("Empty or invalid image received");
-
-      const objectUrl = URL.createObjectURL(blob);
-      const img = document.createElement('img');
-      img.alt = enhancedPrompt;
-      img.src = objectUrl;
-      loadingText.style.display = 'none';
-      bubble.appendChild(img);
-      scrollToBottom();
-    } catch (err) {
-      console.error('Image gen failed:', err);
-      loadingText.textContent = '❌ Image generation failed: ' + err.message + '\nMake sure your Worker is deployed and HF_TOKEN is set.';
-      loadingText.style.color = '#f87171';
-    } finally {
-      if (regenBtn) regenBtn.disabled = false;
-    }
-  }
-
-  function addImageMessage(prompt) {
-    var wrap = document.createElement('div');
-    wrap.className = 'msg assistant';
-    var avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = 'V0';
-    var bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    var loadingText = document.createElement('div');
-    loadingText.className = 'img-loading';
-    loadingText.textContent = 'thinking about your image...';
-    bubble.appendChild(loadingText);
-    wrap.appendChild(avatar);
-    wrap.appendChild(bubble);
-    messagesEl.appendChild(wrap);
-    scrollToBottom();
-
-    fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_API_KEY
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 200,
-        messages: [
-          { role: 'system', content: 'You are an expert at writing image generation prompts. Given a simple description, rewrite it as a detailed, vivid image generation prompt. Include style, lighting, mood, and composition details. Output only the prompt itself, no explanation.' },
-          { role: 'user', content: prompt }
-        ]
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      var enhancedPrompt = data.choices?.[0]?.message?.content?.trim() || prompt;
-      loadingText.textContent = 'generating your image, hold on...';
-
-      var regenBtn = document.createElement('button');
-      regenBtn.className = 'regen-btn';
-      regenBtn.innerHTML = '&#x21bb; regenerate';
-      regenBtn.style.display = 'none';
-      bubble.appendChild(regenBtn);
-
-      generateImage(enhancedPrompt, bubble, loadingText, regenBtn);
-
-      regenBtn.addEventListener('click', () => generateImage(enhancedPrompt, bubble, loadingText, regenBtn));
-
-      const checkInterval = setInterval(() => {
-        if (bubble.querySelector('img')) {
-          regenBtn.style.display = 'inline-flex';
-          clearInterval(checkInterval);
-        }
-      }, 300);
-    })
-    .catch(() => {
-      loadingText.textContent = 'Image enhancement failed, using original prompt...';
-      generateImage(prompt, bubble, loadingText, null);
-    });
   }
 
   function showTyping() {
@@ -299,12 +255,118 @@
 
   function removeTyping() {
     var el = document.getElementById('typing-indicator');
-    if (el) el.remove();
+    if (el) { el.remove(); }
   }
 
+  // ── Image generation ──────────────────────────────────────────
+  function generateImage(enhancedPrompt, bubble, loadingText, regenBtn) {
+    if (regenBtn) { regenBtn.disabled = true; }
+    var oldImg = bubble.querySelector('img');
+    if (oldImg) { oldImg.remove(); }
+    loadingText.style.display = 'block';
+    loadingText.textContent = 'generating your image, hold on...';
+
+    fetch(HF_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'image/*' },
+      body: JSON.stringify({ inputs: enhancedPrompt, parameters: { seed: Math.floor(Math.random() * 999999) } })
+    })
+    .then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) { throw new Error('Worker error ' + res.status + ': ' + t); });
+      }
+      return res.blob();
+    })
+    .then(function (blob) {
+      if (blob.size < 1000) { throw new Error('Empty or invalid image received'); }
+      var objectUrl = URL.createObjectURL(blob);
+      var img = document.createElement('img');
+      img.alt = enhancedPrompt;
+      img.src = objectUrl;
+      loadingText.style.display = 'none';
+      bubble.appendChild(img);
+      incrementImageUsage();
+      if (regenBtn) { regenBtn.disabled = false; }
+      scrollToBottom();
+    })
+    .catch(function (err) {
+      loadingText.textContent = 'image generation failed: ' + err.message;
+      loadingText.style.color = '#f87171';
+      if (regenBtn) { regenBtn.disabled = false; }
+    });
+  }
+
+  function addImageMessage(prompt) {
+    var usage = getImageUsage();
+    if (usage.count >= IMAGE_LIMIT) {
+      addMessage('assistant', 'you have used all 5 image generations for today. come back tomorrow, the void will be waiting.');
+      return;
+    }
+
+    var wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    var avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = 'V0';
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    var loadingText = document.createElement('div');
+    loadingText.className = 'img-loading';
+    loadingText.textContent = 'thinking about your image...';
+    bubble.appendChild(loadingText);
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+
+    fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: 'You are an expert at writing image generation prompts. Given a simple description, rewrite it as a detailed, vivid image generation prompt. Include style, lighting, mood, and composition details. Output only the prompt itself, no explanation.' },
+          { role: 'user', content: prompt }
+        ]
+      })
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      var enhancedPrompt = prompt;
+      if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+        enhancedPrompt = data.choices[0].message.content.trim();
+      }
+
+      var regenBtn = document.createElement('button');
+      regenBtn.className = 'regen-btn';
+      regenBtn.innerHTML = '&#x21bb; regenerate';
+      regenBtn.style.display = 'none';
+      bubble.appendChild(regenBtn);
+
+      generateImage(enhancedPrompt, bubble, loadingText, regenBtn);
+
+      regenBtn.addEventListener('click', function () {
+        generateImage(enhancedPrompt, bubble, loadingText, regenBtn);
+      });
+
+      var checkInterval = setInterval(function () {
+        if (bubble.querySelector('img')) {
+          regenBtn.style.display = 'inline-flex';
+          clearInterval(checkInterval);
+        }
+      }, 300);
+    })
+    .catch(function () {
+      loadingText.textContent = 'prompt enhancement failed, using original...';
+      generateImage(prompt, bubble, loadingText, null);
+    });
+  }
+
+  // ── Send message ──────────────────────────────────────────────
   function sendMessage() {
     var text = inputEl.value.trim();
-    if (!text) return;
+    if (!text) { return; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
@@ -318,18 +380,11 @@
 
     fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_API_KEY
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: messages,
-        max_tokens: 300
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+      body: JSON.stringify({ model: MODEL, messages: messages, max_tokens: 1000 })
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
       removeTyping();
       if (data.error) {
         addMessage('assistant', 'Error: ' + data.error.message, true);
@@ -337,10 +392,8 @@
       } else {
         var reply = data.choices[0].message.content.trim();
         conversationHistory.push({ role: 'assistant', content: reply });
-
-        if (reply.startsWith('IMAGE_REQUEST:')) {
-          var imagePrompt = reply.replace('IMAGE_REQUEST:', '').trim();
-          addImageMessage(imagePrompt);
+        if (reply.indexOf('IMAGE_REQUEST:') === 0) {
+          addImageMessage(reply.replace('IMAGE_REQUEST:', '').trim());
         } else {
           addMessage('assistant', reply);
         }
@@ -348,7 +401,7 @@
       sendBtn.disabled = false;
       inputEl.focus();
     })
-    .catch(err => {
+    .catch(function (err) {
       removeTyping();
       addMessage('assistant', 'something went wrong: ' + err.message, true);
       conversationHistory.pop();
@@ -357,37 +410,36 @@
     });
   }
 
-  // Event Listeners
+  // ── Event listeners ───────────────────────────────────────────
   sendBtn.addEventListener('click', sendMessage);
-  inputEl.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
-  inputEl.addEventListener('input', function() {
+
+  inputEl.addEventListener('input', function () {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
 
-  var clearBtn = document.getElementById('clear-btn');
-  var confirmOverlay = document.getElementById('confirm-overlay');
-  var confirmYes = document.getElementById('confirm-yes');
-  var confirmNo = document.getElementById('confirm-no');
-
-  clearBtn.addEventListener('click', () => confirmOverlay.classList.add('show'));
-  confirmNo.addEventListener('click', () => confirmOverlay.classList.remove('show'));
-  confirmOverlay.addEventListener('click', (e) => {
-    if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
+  document.getElementById('clear-btn').addEventListener('click', function () {
+    document.getElementById('confirm-overlay').classList.add('show');
   });
-  confirmYes.addEventListener('click', () => {
-    confirmOverlay.classList.remove('show');
+
+  document.getElementById('confirm-no').addEventListener('click', function () {
+    document.getElementById('confirm-overlay').classList.remove('show');
+  });
+
+  document.getElementById('confirm-overlay').addEventListener('click', function (e) {
+    if (e.target === document.getElementById('confirm-overlay')) {
+      document.getElementById('confirm-overlay').classList.remove('show');
+    }
+  });
+
+  document.getElementById('confirm-yes').addEventListener('click', function () {
+    document.getElementById('confirm-overlay').classList.remove('show');
     conversationHistory = [];
-    messagesEl.innerHTML = `
-      <div class="msg assistant">
-        <div class="avatar">V0</div>
-        <div class="bubble">chat cleared. fresh start. i have forgotten everything, including where i left my keys.</div>
-      </div>`;
+    messagesEl.innerHTML = '<div class="msg assistant"><div class="avatar">V0</div><div class="bubble">chat cleared. fresh start. i have forgotten everything, including where i left my keys.</div></div>';
   });
 </script>
 </body>
