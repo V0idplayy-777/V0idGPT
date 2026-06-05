@@ -100,7 +100,6 @@
 
 <script>
   var GROQ_API_KEY = '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';
-  var HF_TOKEN = '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';
   var MODEL = 'llama-3.3-70b-versatile';
   var HF_MODEL = 'black-forest-labs/FLUX.1-schnell';
 
@@ -189,7 +188,7 @@
     loadingText.style.display = 'block';
     loadingText.textContent = 'generating your image, hold on...';
 
-    fetch('https://router.huggingface.co/hf-inference/models/' + HF_MODEL, {
+    fetch('https://v0idgpt-api.nburfootfowke.workers.dev/', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + HF_TOKEN,
