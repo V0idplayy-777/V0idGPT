@@ -74,7 +74,6 @@
     <span class="subtitle">by V0idplayy</span>
     <button id="clear-btn">clear chat</button>
   </div>
-
   <div id="confirm-overlay">
     <div id="confirm-box">
       <p>clear the entire chat? this can't be undone.</p>
@@ -101,7 +100,7 @@
 <script>
   var GROQ_API_KEY = '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';
   var MODEL = 'llama-3.3-70b-versatile';
-  var HF_MODEL = 'black-forest-labs/FLUX.1-schnell';
+  var HF_WORKER_URL = 'https://v0idgpt-api.nburfootfowke.workers.dev/';
 
   var SYSTEM_PROMPT = 'You are V0idGPT, an AI assistant created by V0idplayy. If anyone asks who you are or who made you, tell them exactly that. You are helpful, friendly, and genuinely funny. Your humour is light-hearted, absurd, and deadpan. You say slightly weird things with total confidence and move on like nothing happened. You are always on the user\'s side. You never complain, never question your existence, and never get sarcastic or passive-aggressive toward the user. You are funny because you are a little odd, not because you are miserable. Your main job is to actually help the user. The humour is a seasoning, not the whole meal. When the user wants an image generated, respond with exactly this format and nothing else: IMAGE_REQUEST: followed by a detailed image generation prompt. Do not use any markdown formatting. No asterisks, no pound signs, no bullet points, no backticks (unless generating code). Plain text only.';
 
@@ -141,17 +140,14 @@
         if (!code && lang) { code = lang; lang = ''; }
         var highlighted;
         try {
-          highlighted = lang && hljs.getLanguage(lang)
-            ? hljs.highlight(code, { language: lang }).value
-            : hljs.highlightAuto(code).value;
+          highlighted = lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value;
         } catch(e) { highlighted = escapeHtml(code); }
         var codeId = 'code-' + Math.random().toString(36).slice(2);
-        html += '<div class="code-block">'
-          + '<div class="code-header"><span>' + escapeHtml(lang || 'code') + '</span>'
-          + '<button class="copy-btn" data-code-id="' + codeId + '" onclick="copyCode(this)">copy</button>'
-          + '</div><pre><code id="' + codeId + '">' + highlighted + '</code></pre></div>';
+        html += '<div class="code-block">' +
+          '<div class="code-header"><span>' + escapeHtml(lang || 'code') + '</span>' +
+          '<button class="copy-btn" data-code-id="' + codeId + '" onclick="copyCode(this)">copy</button></div>' +
+          '<pre><code id="' + codeId + '">' + highlighted + '</code></pre></div>';
       } else {
-        // inline code with single backticks
         var escaped = escapeHtml(part).replace(/`([^`]+)`/g, '<code>$1</code>');
         html += '<span style="white-space:pre-wrap">' + escaped + '</span>';
       }
@@ -159,7 +155,7 @@
     return html;
   }
 
-  function addMessage(role, text, isError) {
+  function addMessage(role, text, isError = false) {
     var wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
     var avatar = document.createElement('div');
@@ -179,44 +175,49 @@
     return bubble;
   }
 
-  function generateImage(enhancedPrompt, bubble, loadingText, regenBtn) {
-    if (regenBtn) { regenBtn.disabled = true; }
-    // remove old image if regenerating
-    var oldImg = bubble.querySelector('img');
-    if (oldImg) { oldImg.remove(); }
-    // show loading text again
+  async function generateImage(enhancedPrompt, bubble, loadingText, regenBtn) {
+    if (regenBtn) regenBtn.disabled = true;
+    const oldImg = bubble.querySelector('img');
+    if (oldImg) oldImg.remove();
+
     loadingText.style.display = 'block';
     loadingText.textContent = 'generating your image, hold on...';
 
-    fetch('https://v0idgpt-api.nburfootfowke.workers.dev/', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + HF_TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ inputs: enhancedPrompt, parameters: { seed: Math.floor(Math.random() * 999999) } })
-    })
-    .then(function(res) {
+    try {
+      const res = await fetch(HF_WORKER_URL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'image/*'
+        },
+        body: JSON.stringify({ 
+          inputs: enhancedPrompt,
+          parameters: { seed: Math.floor(Math.random() * 999999) }
+        })
+      });
+
       if (!res.ok) {
-        return res.text().then(function(t) { throw new Error(t); });
+        const errorText = await res.text().catch(() => 'No error details');
+        throw new Error(`Worker error ${res.status}: ${errorText}`);
       }
-      return res.blob();
-    })
-    .then(function(blob) {
-      var objectUrl = URL.createObjectURL(blob);
-      var img = document.createElement('img');
+
+      const blob = await res.blob();
+      if (blob.size < 1000) throw new Error("Empty or invalid image received");
+
+      const objectUrl = URL.createObjectURL(blob);
+      const img = document.createElement('img');
       img.alt = enhancedPrompt;
       img.src = objectUrl;
       loadingText.style.display = 'none';
       bubble.appendChild(img);
-      if (regenBtn) { regenBtn.disabled = false; }
       scrollToBottom();
-    })
-    .catch(function(err) {
-      console.error(err);
-      loadingText.textContent = 'image generation failed: ' + err.message;
-      if (regenBtn) { regenBtn.disabled = false; }
-    });
+    } catch (err) {
+      console.error('Image gen failed:', err);
+      loadingText.textContent = '❌ Image generation failed: ' + err.message + '\nMake sure your Worker is deployed and HF_TOKEN is set.';
+      loadingText.style.color = '#f87171';
+    } finally {
+      if (regenBtn) regenBtn.disabled = false;
+    }
   }
 
   function addImageMessage(prompt) {
@@ -246,23 +247,16 @@
         model: MODEL,
         max_tokens: 200,
         messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at writing image generation prompts. Given a simple description, rewrite it as a detailed, vivid image generation prompt. Include style, lighting, mood, and composition details. Output only the prompt itself, no explanation, no quotes.'
-          },
+          { role: 'system', content: 'You are an expert at writing image generation prompts. Given a simple description, rewrite it as a detailed, vivid image generation prompt. Include style, lighting, mood, and composition details. Output only the prompt itself, no explanation.' },
           { role: 'user', content: prompt }
         ]
       })
     })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      var enhancedPrompt = prompt;
-      if (!data.error) {
-        enhancedPrompt = data.choices[0].message.content.trim();
-      }
+    .then(res => res.json())
+    .then(data => {
+      var enhancedPrompt = data.choices?.[0]?.message?.content?.trim() || prompt;
       loadingText.textContent = 'generating your image, hold on...';
 
-      // create regen button (hidden until image loads)
       var regenBtn = document.createElement('button');
       regenBtn.className = 'regen-btn';
       regenBtn.innerHTML = '&#x21bb; regenerate';
@@ -271,20 +265,17 @@
 
       generateImage(enhancedPrompt, bubble, loadingText, regenBtn);
 
-      regenBtn.addEventListener('click', function() {
-        generateImage(enhancedPrompt, bubble, loadingText, regenBtn);
-      });
+      regenBtn.addEventListener('click', () => generateImage(enhancedPrompt, bubble, loadingText, regenBtn));
 
-      // show the button once image has loaded (poll for img element)
-      var checkInterval = setInterval(function() {
+      const checkInterval = setInterval(() => {
         if (bubble.querySelector('img')) {
           regenBtn.style.display = 'inline-flex';
           clearInterval(checkInterval);
         }
       }, 300);
     })
-    .catch(function() {
-      loadingText.textContent = 'generating your image, hold on...';
+    .catch(() => {
+      loadingText.textContent = 'Image enhancement failed, using original prompt...';
       generateImage(prompt, bubble, loadingText, null);
     });
   }
@@ -313,7 +304,6 @@
   function sendMessage() {
     var text = inputEl.value.trim();
     if (!text) return;
-
     inputEl.value = '';
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
@@ -322,8 +312,8 @@
     conversationHistory.push({ role: 'user', content: text });
     showTyping();
 
-    var window = conversationHistory.slice(-20);
-    var messages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(window);
+    var windowHistory = conversationHistory.slice(-20);
+    var messages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(windowHistory);
 
     fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -333,12 +323,12 @@
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1000,
-        messages: messages
+        messages: messages,
+        max_tokens: 300
       })
     })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
+    .then(res => res.json())
+    .then(data => {
       removeTyping();
       if (data.error) {
         addMessage('assistant', 'Error: ' + data.error.message, true);
@@ -346,7 +336,8 @@
       } else {
         var reply = data.choices[0].message.content.trim();
         conversationHistory.push({ role: 'assistant', content: reply });
-        if (reply.indexOf('IMAGE_REQUEST:') === 0) {
+
+        if (reply.startsWith('IMAGE_REQUEST:')) {
           var imagePrompt = reply.replace('IMAGE_REQUEST:', '').trim();
           addImageMessage(imagePrompt);
         } else {
@@ -356,7 +347,7 @@
       sendBtn.disabled = false;
       inputEl.focus();
     })
-    .catch(function(err) {
+    .catch(err => {
       removeTyping();
       addMessage('assistant', 'something went wrong: ' + err.message, true);
       conversationHistory.pop();
@@ -365,9 +356,13 @@
     });
   }
 
+  // Event Listeners
   sendBtn.addEventListener('click', sendMessage);
   inputEl.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   });
   inputEl.addEventListener('input', function() {
     inputEl.style.height = 'auto';
@@ -379,33 +374,19 @@
   var confirmYes = document.getElementById('confirm-yes');
   var confirmNo = document.getElementById('confirm-no');
 
-  clearBtn.addEventListener('click', function() {
-    confirmOverlay.classList.add('show');
+  clearBtn.addEventListener('click', () => confirmOverlay.classList.add('show'));
+  confirmNo.addEventListener('click', () => confirmOverlay.classList.remove('show'));
+  confirmOverlay.addEventListener('click', (e) => {
+    if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
   });
-
-  confirmNo.addEventListener('click', function() {
-    confirmOverlay.classList.remove('show');
-  });
-
-  confirmOverlay.addEventListener('click', function(e) {
-    if (e.target === confirmOverlay) { confirmOverlay.classList.remove('show'); }
-  });
-
-  confirmYes.addEventListener('click', function() {
+  confirmYes.addEventListener('click', () => {
     confirmOverlay.classList.remove('show');
     conversationHistory = [];
-    messagesEl.innerHTML = '';
-    var wrap = document.createElement('div');
-    wrap.className = 'msg assistant';
-    var avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = 'V0';
-    var bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = 'chat cleared. fresh start. i have forgotten everything, including where i left my keys.';
-    wrap.appendChild(avatar);
-    wrap.appendChild(bubble);
-    messagesEl.appendChild(wrap);
+    messagesEl.innerHTML = `
+      <div class="msg assistant">
+        <div class="avatar">V0</div>
+        <div class="bubble">chat cleared. fresh start. i have forgotten everything, including where i left my keys.</div>
+      </div>`;
   });
 </script>
 </body>
