@@ -1,14 +1,19 @@
 {
-  "name": "v0idgpt-app",
-  "version": "1.0.0",
-  "private": true,
-  "description": "V0idGPT — a ChatGPT-style interface powered entirely in the browser by the bundled NeuronForge V0idGPT model.",
+  "name": "v0idgpt-2-40k",
+  "version": "1.1.0",
+  "description": "v0idgpt-2-40k: NeuronForge standalone model (language)",
   "type": "module",
-  "scripts": {
-    "start": "node server.mjs",
-    "dev": "node server.mjs",
-    "verify-model": "node javascript/verify.mjs",
-    "verify-model-2": "node models/v0idgpt-2-40k/verify.mjs"
+  "main": "model.mjs",
+  "types": "model.d.mts",
+  "exports": {
+    ".": {
+      "types": "./model.d.mts",
+      "default": "./model.mjs"
+    }
   },
-  "license": "Apache-2.0"
+  "scripts": {
+    "verify": "node verify.mjs",
+    "example": "node example.mjs"
+  },
+  "license": "UNLICENSED"
 }
