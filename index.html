@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="V0idGPT — a ChatGPT-style chat interface powered entirely in your browser by the bundled V0idGPT neural model. No servers, no API keys." />
+<meta name="color-scheme" content="light dark" />
+<title>V0idGPT</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23000'/%3E%3Ctext x='50' y='66' font-size='52' text-anchor='middle' fill='%23fff' font-family='Arial' font-weight='bold'%3EV%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="./css/styles.css" />
+<script src="./vendor/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════ Loading splash ══════════ -->
+<div id="splash" role="status" aria-label="Loading V0idGPT">
+  <div class="splash-card">
+    <div class="splash-logo" aria-hidden="true">V</div>
+    <div class="splash-title">V0idGPT</div>
+    <div class="splash-status" id="splashStatus">Loading model weights…</div>
+    <div class="splash-bar"><div class="splash-bar-fill" id="splashBar"></div></div>
+    <div class="splash-note">The model runs 100% in your browser — nothing you type leaves this device.</div>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
+  <!-- ══════════ Sidebar ══════════ -->
+  <div id="sidebarScrim" class="sidebar-scrim"></div>
+  <aside id="sidebar" class="sidebar" aria-label="Chat history sidebar">
+    <div class="sidebar-top">
+      <button id="closeSidebarBtn" class="icon-btn" title="Close sidebar" aria-label="Close sidebar">
+        <i data-lucide="panel-left-close"></i>
+      </button>
+      <div class="sidebar-top-actions">
+        <button id="searchToggleBtn" class="icon-btn" title="Search chats (Ctrl+K)" aria-label="Search chats">
+          <i data-lucide="search"></i>
+        </button>
+        <button id="newChatBtnTop" class="icon-btn" title="New chat (Ctrl+Shift+O)" aria-label="New chat">
+          <i data-lucide="square-pen"></i>
+        </button>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Primary">
+      <button id="newChatBtn" class="nav-item">
+        <i data-lucide="square-pen"></i><span>New chat</span>
+        <kbd class="nav-kbd">Ctrl ⇧ O</kbd>
+      </button>
+      <button id="searchNavBtn" class="nav-item">
+        <i data-lucide="search"></i><span>Search chats</span>
+        <kbd class="nav-kbd">Ctrl K</kbd>
+      </button>
+      <div id="searchBox" class="search-box" hidden>
+        <i data-lucide="search"></i>
+        <input id="searchInput" type="text" placeholder="Search chats…" autocomplete="off" spellcheck="false" />
+        <button id="searchClearBtn" class="icon-btn tiny" title="Clear search" aria-label="Clear search" hidden>
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    </nav>
+
+    <div class="sidebar-section-label" id="historyLabel">Chats</div>
+    <div id="chatList" class="chat-list" role="list" aria-label="Chat history"></div>
+
+    <div class="sidebar-bottom">
+      <button id="modelCardBtn" class="model-card" title="About this model">
+        <span class="model-avatar" aria-hidden="true">V</span>
+        <span class="model-card-text">
+          <span class="model-card-name" id="modelCardName">V0idGPT</span>
+          <span class="model-card-sub"><span class="status-dot" id="modelStatusDot"></span><span id="modelStatusText">Loading…</span></span>
+        </span>
+        <i data-lucide="chevron-right" class="model-card-chevron"></i>
+      </button>
+      <button id="profileBtn" class="profile-row" title="Settings">
+        <span class="profile-avatar" aria-hidden="true">Y</span>
+        <span class="profile-name">You</span>
+        <i data-lucide="settings-2" class="profile-settings-icon"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════ Main ══════════ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="openSidebarBtn" class="icon-btn" title="Open sidebar" aria-label="Open sidebar" hidden>
+          <i data-lucide="panel-left-open"></i>
+        </button>
+        <button id="newChatBtnHeader" class="icon-btn" title="New chat" aria-label="New chat" hidden>
+          <i data-lucide="square-pen"></i>
+        </button>
+        <div class="model-menu-wrap">
+          <button id="modelMenuBtn" class="model-menu-btn" aria-haspopup="true" aria-expanded="false">
+            <span id="modelMenuLabel">V0idGPT</span>
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <div id="modelMenu" class="dropdown model-dropdown" hidden role="menu" aria-label="Model menu">
+            <div class="model-dropdown-head">
+              <span class="model-avatar sm" aria-hidden="true">V</span>
+              <div>
+                <div class="model-dropdown-name"><span id="modelMenuName">V0idGPT</span> <span class="badge-live">Live</span></div>
+                <div class="model-dropdown-sub" id="modelMenuSub">NeuronForge · in-browser</div>
+              </div>
+            </div>
+            <div id="modelList" class="model-list"></div>
+            <div class="model-specs" id="modelSpecs"></div>
+            <button class="dropdown-item" id="menuModelSettings" role="menuitem">
+              <i data-lucide="sliders-horizontal"></i><span>Generation settings</span>
+            </button>
+            <button class="dropdown-item" id="menuVerify" role="menuitem">
+              <i data-lucide="shield-check"></i><span>Verify model integrity</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button id="shareBtn" class="share-btn" title="Share this chat">
+          <i data-lucide="share"></i><span>Share</span>
+        </button>
+        <button id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+          <i data-lucide="moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <div id="scrollArea" class="scroll-area">
+      <!-- Empty state -->
+      <section id="emptyState" class="empty-state">
+        <h1 class="empty-title">What can I help with?</h1>
+        <div class="suggestions" id="suggestions" role="list" aria-label="Suggestions"></div>
+      </section>
+
+      <!-- Conversation -->
+      <section id="thread" class="thread" hidden aria-live="off"></section>
+    </div>
+
+    <button id="scrollBottomBtn" class="scroll-bottom-btn" title="Scroll to bottom" aria-label="Scroll to bottom" hidden>
+      <i data-lucide="arrow-down"></i>
+    </button>
+
+    <!-- Composer -->
+    <div class="composer-wrap">
+      <div class="composer-column">
+        <div id="composer" class="composer">
+          <div id="attachmentChip" class="attachment-chip" hidden>
+            <i data-lucide="file-text"></i>
+            <span id="attachmentName">file.txt</span>
+            <button id="attachmentRemove" class="icon-btn tiny" title="Remove attachment" aria-label="Remove attachment"><i data-lucide="x"></i></button>
+          </div>
+          <textarea id="composerInput" rows="1" placeholder="Ask anything" aria-label="Message the model"></textarea>
+          <div class="composer-actions">
+            <div class="composer-actions-left">
+              <div class="attach-wrap">
+                <button id="attachBtn" class="icon-btn composer-btn" title="Attach &amp; more" aria-label="Attach and more" aria-haspopup="true" aria-expanded="false">
+                  <i data-lucide="plus"></i>
+                </button>
+                <div id="attachMenu" class="dropdown attach-dropdown" hidden role="menu" aria-label="Attach menu">
+                  <button class="dropdown-item" id="menuUpload" role="menuitem"><i data-lucide="paperclip"></i><span>Upload a text file</span></button>
+                  <button class="dropdown-item" id="menuSurprise" role="menuitem"><i data-lucide="dices"></i><span>Surprise me</span></button>
+                  <button class="dropdown-item" id="menuClearChat" role="menuitem"><i data-lucide="eraser"></i><span>Clear this chat</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="composer-actions-right">
+              <button id="micBtn" class="icon-btn composer-btn" title="Dictate (voice input)" aria-label="Dictate">
+                <i data-lucide="mic"></i>
+              </button>
+              <button id="sendBtn" class="send-btn" title="Send message" aria-label="Send message" disabled>
+                <i data-lucide="arrow-up"></i>
+              </button>
+              <button id="stopBtn" class="send-btn stop" title="Stop generating" aria-label="Stop generating" hidden>
+                <i data-lucide="square"></i>
+              </button>
+            </div>
+          </div>
+          <input type="file" id="fileInput" accept=".txt,.md,.csv,.json,.log,text/plain" hidden />
+        </div>
+        <p class="disclaimer" id="disclaimer"></p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════ Settings modal ══════════ -->
+<div id="settingsOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button id="settingsClose" class="icon-btn" title="Close settings" aria-label="Close settings"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
+        <button class="settings-tab active" data-tab="general" role="tab" aria-selected="true"><i data-lucide="settings"></i><span>General</span></button>
+        <button class="settings-tab" data-tab="model" role="tab" aria-selected="false"><i data-lucide="cpu"></i><span>Model</span></button>
+        <button class="settings-tab" data-tab="data" role="tab" aria-selected="false"><i data-lucide="database"></i><span>Data</span></button>
+      </div>
+
+      <div class="settings-panels">
+        <!-- General -->
+        <div class="settings-panel" data-panel="general">
+          <div class="setting-row">
+            <div class="setting-label"><span>Theme</span><small>Choose how V0idGPT looks on this device.</small></div>
+            <div class="segmented" id="themeSegmented" role="group" aria-label="Theme">
+              <button data-theme-val="system">System</button>
+              <button data-theme-val="light">Light</button>
+              <button data-theme-val="dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Stream responses</span><small>Show text as the model generates it, character by character.</small></div>
+            <button class="switch" id="toggleStream" role="switch" aria-checked="true" title="Toggle streaming"><span class="switch-knob"></span></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Tidy formatting</span><small>Capitalise sentences and tidy spacing in replies. Turn off to see the model's exact raw output.</small></div>
+            <button class="switch" id="toggleTidy" role="switch" aria-checked="true" title="Toggle tidy formatting"><span class="switch-knob"></span></button>
+          </div>
+          <div class="setting-row col">
+            <div class="setting-label"><span>Keyboard shortcuts</span></div>
+            <div class="shortcuts">
+              <div><span>New chat</span><kbd>Ctrl/⌘ + Shift + O</kbd></div>
+              <div><span>Search chats</span><kbd>Ctrl/⌘ + K</kbd></div>
+              <div><span>Toggle sidebar</span><kbd>Ctrl/⌘ + Shift + S</kbd></div>
+              <div><span>Send message</span><kbd>Enter</kbd></div>
+              <div><span>New line</span><kbd>Shift + Enter</kbd></div>
+              <div><span>Stop generating</span><kbd>Esc</kbd></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Model -->
+        <div class="settings-panel" data-panel="model" hidden>
+          <div class="setting-row col">
+            <div class="setting-label"><span>Model</span><small>Switch which bundled model generates replies. Your chats are kept when you switch.</small></div>
+            <div class="segmented model-segmented" id="modelSegmented" role="group" aria-label="Model"></div>
+          </div>
+          <div class="model-info-card" id="modelInfoCard"></div>
+          <div class="setting-row col">
+            <div class="setting-label row-between"><span>Temperature</span><span class="slider-val" id="tempVal">0.75</span></div>
+            <small class="setting-hint">Higher values make output more random and creative; lower values make it more focused and repetitive.</small>
+            <input type="range" id="tempSlider" min="0.05" max="1.5" step="0.05" value="0.75" aria-label="Temperature" />
+          </div>
+          <div class="setting-row col">
+            <div class="setting-label row-between"><span>Top-K</span><span class="slider-val" id="topKVal">8</span></div>
+            <small class="setting-hint">How many candidate characters the sampler can choose from at each step (vocabulary: <span id="topKVocab">34</span>).</small>
+            <input type="range" id="topKSlider" min="1" max="34" step="1" value="8" aria-label="Top-K" />
+          </div>
+          <div class="setting-row col">
+            <div class="setting-label row-between"><span>Max response length</span><span class="slider-val" id="maxTokVal">140</span></div>
+            <small class="setting-hint">Maximum <span id="maxTokUnit">characters</span> generated per reply before stopping.</small>
+            <input type="range" id="maxTokSlider" min="30" max="400" step="10" value="140" aria-label="Max response length" />
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Verify model</span><small>Replay NeuronForge's test vectors to confirm the weights in your browser are bit-identical.</small></div>
+            <button class="btn secondary" id="verifyBtn"><i data-lucide="shield-check"></i>Verify</button>
+          </div>
+          <div id="verifyResult" class="verify-result" hidden></div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Reset generation settings</span><small>Restore temperature, Top-K and length to defaults.</small></div>
+            <button class="btn secondary" id="resetSamplingBtn"><i data-lucide="rotate-ccw"></i>Reset</button>
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div class="settings-panel" data-panel="data" hidden>
+          <div class="setting-row">
+            <div class="setting-label"><span>Export chats</span><small>Download all conversations on this device as JSON.</small></div>
+            <button class="btn secondary" id="exportBtn"><i data-lucide="download"></i>Export</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Import chats</span><small>Restore conversations from a V0idGPT export file.</small></div>
+            <button class="btn secondary" id="importBtn"><i data-lucide="upload"></i>Import</button>
+            <input type="file" id="importInput" accept=".json,application/json" hidden />
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><span>Delete all chats</span><small>Permanently remove every conversation stored on this device.</small></div>
+            <button class="btn danger" id="clearAllBtn"><i data-lucide="trash-2"></i>Delete all</button>
+          </div>
+          <p class="data-note"><i data-lucide="lock"></i> Chats are stored only in your browser's local storage. The model runs locally — no message is ever sent to a server.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirmOverlay" class="modal-overlay" hidden>
+  <div class="modal small" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+    <div class="modal-head"><h2 id="confirmTitle">Are you sure?</h2></div>
+    <p id="confirmText" class="confirm-text"></p>
+    <div class="confirm-actions">
+      <button class="btn secondary" id="confirmCancel">Cancel</button>
+      <button class="btn danger-solid" id="confirmOk">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat item context menu (single instance, positioned) -->
+<div id="chatMenu" class="dropdown chat-menu" hidden role="menu" aria-label="Chat actions">
+  <button class="dropdown-item" id="chatMenuRename" role="menuitem"><i data-lucide="pencil"></i><span>Rename</span></button>
+  <button class="dropdown-item" id="chatMenuShare" role="menuitem"><i data-lucide="share"></i><span>Share</span></button>
+  <button class="dropdown-item danger" id="chatMenuDelete" role="menuitem"><i data-lucide="trash-2"></i><span>Delete</span></button>
+</div>
+
+<div id="toastWrap" class="toast-wrap" aria-live="polite"></div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
