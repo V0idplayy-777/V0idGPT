@@ -36,9 +36,9 @@ const MODELS = {
     unitLong: "characters",
     prompt: "chat",
     presets: {
-      coherent: { temperature: 0.2, topK: 4, maxTokens: 100 },
-      balanced: { temperature: 0.45, topK: 8, maxTokens: 140 },
-      wild: { temperature: 0.8, topK: 16, maxTokens: 180 },
+      coherent: { temperature: 0.1, topK: 3, maxTokens: 100 },
+      balanced: { temperature: 0.2, topK: 4, maxTokens: 140 },
+      wild: { temperature: 0.75, topK: 12, maxTokens: 180 },
     },
     load: () => import("../models/v0idgpt-3-3M-reasoning/model.mjs"),
   },
@@ -74,8 +74,8 @@ const DEFAULT_SETTINGS = {
   theme: "system",          // system | light | dark
   stream: true,
   tidy: true,
-  temperature: 0.75,
-  topK: 8,
+  temperature: 0.2,
+  topK: 4,
   maxTokens: 140,
 };
 
@@ -84,7 +84,14 @@ try { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(LS_SE
 
 if (!MODELS[settings.model]) settings.model = DEFAULT_MODEL;
 if (!settings.samplers || typeof settings.samplers !== "object") {
-  settings.samplers = { [DEFAULT_MODEL]: { temperature: settings.temperature, topK: settings.topK, maxTokens: settings.maxTokens } };
+  settings.samplers = { [DEFAULT_MODEL]: { ...MODELS[DEFAULT_MODEL].presets.balanced } };
+}
+// Earlier 3M defaults were too hot for this small character-level model and
+// often wandered off-topic. Migrate those exact preset values; preserve custom
+// sampler choices.
+const oldThreeMSampler = settings.samplers[DEFAULT_MODEL];
+if (oldThreeMSampler?.topK === 8 && oldThreeMSampler?.maxTokens === 140 && [0.75, 0.45].includes(oldThreeMSampler?.temperature)) {
+  settings.samplers[DEFAULT_MODEL] = { ...MODELS[DEFAULT_MODEL].presets.balanced };
 }
 
 let chats = [];
@@ -585,9 +592,8 @@ function editUserMessage(idx) {
 }
 
 /* ─────────────────── the model: prompt + sampler ─────────────────── */
-/* The model is a char-level LM (34-char vocab, 64-char context) trained on
-   "q: …? a: …" conversations. We condition it exactly that way, feeding the
-   recent conversation so the final "a:" is what it continues.            */
+/* The 3M model is a locally trained character-level LSTM. Its replies are
+   sampled from model probabilities; no prompt-to-response lookup is used. */
 function cleanQuestion(text) {
   return text.replace(/\s+/g, " ").trim().replace(/[?.!]+$/, "");
 }
@@ -597,11 +603,13 @@ function buildPrompt(chat) {
     return last ? last.content.replace(/\s+/g, " ").trim().toLowerCase() : "";
   }
   if (MODELS[modelId].prompt === "chat") {
-    const last = [...chat.messages].reverse().find((m) => m.role === "user");
-    const text = last ? last.content.replace(/\s+/g, " ").trim().toLowerCase() : "";
-    // This format exactly matches the new model's training corpus. Its bounded
-    // recurrent context keeps the useful tail automatically.
-    return `user: ${text}\nassistant:`;
+    const turns = chat.messages
+      .filter((m) => !m.notice && m.content && (m.role === "user" || m.role === "assistant"))
+      .slice(-8)
+      .map((m) => `${m.role}: ${m.content.replace(/\s+/g, " ").trim().toLowerCase()}`);
+    // Keep recent turns in the same format used by training. The model's
+    // context window will naturally retain the most recent characters.
+    return `${turns.join("\n")}\nassistant:`;
   }
   let s = "";
   for (const m of chat.messages) {
@@ -662,17 +670,24 @@ function traceStep(probs, temperature, topK, chosen, tok) {
 async function generateRaw(prompt, ctrl, onPartial, trace) {
   let ctx = prompt;
   let out = "";
+  const session = typeof model.createGenerationSession === "function"
+    ? model.createGenerationSession(prompt)
+    : null;
   for (let step = 0; step < settings.maxTokens; step++) {
     if (ctrl.stopped) break;
-    const res = model.predict(ctx);            // ← the real V0idGPT forward pass
+    const res = session ? session.predict() : model.predict(ctx);
     const idx = sampleToken(res.raw, settings.temperature, settings.topK);
     const tok = model.detokenize([idx]);
-    if (tok === "\n" || tok === "") break;     // EOS, exactly like model.generate()
+    if (tok === "\n" || tok === "") break;
     if (trace) trace.push(traceStep(res.raw, settings.temperature, settings.topK, idx, tok));
-    out += tok; ctx += tok;
+    out += tok;
+    if (session) session.push(idx);
+    else ctx += tok;
     if (onPartial) onPartial(out);
-    if (settings.stream) await sleep(out.length < 3 ? 60 : 14);
-    else if (step % 10 === 9) await sleep(0);  // keep UI responsive
+    if (settings.stream) {
+      const delay = session ? (out.length < 3 ? 20 : 2) : (out.length < 3 ? 60 : 14);
+      await sleep(delay);
+    } else if (step % 10 === 9) await sleep(0);  // keep UI responsive
   }
   return out;
 }
@@ -721,7 +736,7 @@ async function runGeneration() {
   const steps = [];
   const traceMeta = { model: modelId, temperature: settings.temperature, topK: settings.topK };
   try {
-    await sleep(280); // brief "thinking" beat, like real ChatGPT
+    await sleep(model.createGenerationSession ? 60 : 280); // skip most of the artificial delay on the fast decoder
     for (let attempt = 0; attempt < 3; attempt++) {
       steps.length = 0;
       raw = await generateRaw(prompt, ctrl, settings.stream ? paint : null, steps);
@@ -1148,7 +1163,7 @@ function applyModelLabels() {
   $("#modelCardName").textContent = m.label;
   $("#maxTokUnit").textContent = m.unitLong;
   $("#topKVocab").textContent = model.info.tokenizer.vocabSize;
-  $("#disclaimer").textContent = `${m.label} is a tiny ${model.info.paramCount.toLocaleString()}-parameter model running entirely in your browser. It can make mistakes — and charming nonsense.`;
+  $("#disclaimer").textContent = `${m.label} is a small ${model.info.paramCount.toLocaleString()}-parameter model running in your browser. Replies are generated from learned weights and can still be incorrect or miss context.`;
   $("#composerInput").setAttribute("aria-label", `Message ${m.label}`);
   document.title = m.label;
 }
@@ -1161,8 +1176,11 @@ async function loadModelById(id, onStage = () => {}) {
     const loaded = await mod.loadModel();
     onStage(85, "Checking the model…");
     await sleep(0);
-    const smoke = loaded.predict("q: hello? a:");
-    if (!smoke || !Array.isArray(smoke.raw)) throw new Error("Model smoke test failed");
+    const smokePrompt = MODELS[id].prompt === "chat" ? "user: hello\nassistant:" : (MODELS[id].prompt === "plain" ? "hello" : "q: hello? a:");
+    const smoke = loaded.createGenerationSession
+      ? loaded.createGenerationSession(smokePrompt).predict()
+      : loaded.predict(smokePrompt);
+    if (!smoke || !smoke.raw || smoke.raw.length !== loaded.info.tokenizer.vocabSize) throw new Error("Model smoke test failed");
     loadedModels[id] = loaded;
   }
   onStage(100, `${MODELS[id].label} ready`);

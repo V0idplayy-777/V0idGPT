@@ -65,8 +65,14 @@ export interface ModelInfo {
 
 export type ImageInput = { data: ArrayLike<number>; width: number; height: number; channels?: number } | ArrayLike<number>;
 
+export interface GenerationSession {
+  predict(): { raw: Float32Array };
+  push(tokenId: number): void;
+}
+
 export interface NeuronForgeModel {
   info: ModelInfo;
+  createGenerationSession?(prompt: string): GenerationSession;
   forward(input: ArrayLike<number> | number[] | number[][], batchSize?: number): { shape: number[]; data: Float32Array };
   predict(input: unknown, options?: { preprocessed?: boolean }): PredictionResult;
   predictBatch(inputs: unknown[], options?: { preprocessed?: boolean }): PredictionResult[];
@@ -82,8 +88,12 @@ export interface NeuronForgeModel {
   getWeights(): Record<string, Float32Array>;
 }
 
-export declare function loadModel(): Promise<NeuronForgeModel>;
-export declare function loadModelSync(): NeuronForgeModel;
+export interface StreamingNeuronForgeModel extends NeuronForgeModel {
+  createGenerationSession(prompt: string): GenerationSession;
+}
+
+export declare function loadModel(): Promise<StreamingNeuronForgeModel>;
+export declare function loadModelSync(): StreamingNeuronForgeModel;
 export declare function createModel(bundle: unknown, options?: { skipChecksums?: boolean }): NeuronForgeModel;
 export declare const bundle: unknown;
 export declare const NF_RUNTIME_VERSION: string;
