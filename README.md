@@ -23,7 +23,7 @@ Any static file server works too (`python3 -m http.server`, `npx serve`, …), a
 | Runtime | NeuronForge standalone runtime v1.3.0 (`javascript/runtime.mjs`) |
 | Training format | `q: …? a: …` conversations (see `dataset.json`) |
 
-The app conditions the model the way it was trained (`q: <your message>? a:` plus the recent conversation tail — the tokenizer keeps the last 64 characters), then samples each next character with the same temperature + top-k sampler as `model.generate()`, stopping at the model's end-of-sequence token (`\n`). You can watch this happen live: replies stream in character by character, and **Settings → Model → Verify** replays NeuronForge's reference test vectors to prove the weights in your browser are bit-identical to the export.
+Each model uses its own training prompt format and tokenizer. The default 3M model is trained on recent `user:` / `assistant:` turns, uses a 128-character prompt window, and streams each next character from the model's probability distribution until its end-of-sequence token (`\n`). Its browser decoder carries the LSTM state forward between characters instead of recomputing the full prompt every time. No greeting or answer lookup runs at inference time. **Settings → Model → Verify** checks the exported model weights and runtime.
 
 Verify the model from the command line any time:
 
@@ -35,7 +35,7 @@ npm run verify-model-3     # trained 3.04M reasoning model
 
 ### Honest expectations
 
-V0idGPT is a *tiny* character-level model trained on ~8K characters. It has learned the shape of greetings, Q&A and simple facts, but its replies are often fragmentary or nonsensical — that's genuinely what this model produces, and this app shows you its real output rather than faking answers with a bigger model. Use the Temperature / Top-K sliders in **Settings → Model** to explore its behaviour (lower Top-K is noticeably more coherent).
+The default 3M model generates replies live from its trained neural weights; the app does not route prompts to pre-written answers. It now has a balanced, non-duplicated training set, answer-focused training, recent-turn context, and incremental decoding. It is still only 3M parameters and character-level, so it is not comparable to a modern large assistant and can still misunderstand prompts or get facts and arithmetic wrong. Use it for lightweight conversation and experiments, not high-stakes decisions. The older 6K model remains much more limited; its small corpus often produces fragmentary text.
 
 ## Models
 
@@ -45,9 +45,9 @@ Switch models in **Settings → Model** or from the model menu in the header. Th
 |---|---|---|---|---|
 | V0idGPT | 6,434 | character-level, 34 tokens | 64 chars | `javascript/` |
 | v0idgpt-2-40k | 41,824 | BPE subword, 512 tokens | 16 tokens | `models/v0idgpt-2-40k/` |
-| **v0idgpt-3-3M-reasoning** | **3,038,759** | character-level, 71 tokens | 48 chars | `models/v0idgpt-3-3M-reasoning/` |
+| **v0idgpt-3-3M-reasoning** | **3,038,759** | character-level, 71 tokens | 128 chars | `models/v0idgpt-3-3M-reasoning/` |
 
-`v0idgpt-3-3M-reasoning` is the default model for new users. It is an 800-unit LSTM trained end-to-end on the checked-in 2,000-line `dataset.jsonl`, covering conversation, concise reasoning, arithmetic, planning, writing, knowledge, and safety. Its completed training metrics and reproducible data/training scripts are included. As a very small language model, it can still make mistakes; see its package README for honest limitations.
+`v0idgpt-3-3M-reasoning` is the default model for new users. It is an 800-unit LSTM trained with assistant-only next-character loss on a reproducible, balanced corpus of conversational, factual, reasoning, arithmetic, planning, writing, and safety examples. The trainer, corpus generator, and metrics are checked in. Its package README documents the model's limits.
 
 Each model remembers its own Temperature / Top-K / length, and **Settings → Model → Preset** has one-tap Coherent / Balanced / Wild settings tuned per model. Under any reply, the token icon shows the raw output token by token — tap a token to see the alternatives the model considered and what the sampler actually drew. Token views live in memory only, so they're available for replies generated in the current session.
 
@@ -75,7 +75,7 @@ vendor/             Lucide icons (ISC licensed, vendored for offline use)
 server.mjs          zero-dependency static server
 javascript/         the original, untouched NeuronForge model export
 models/              additional standalone model packages
-models/v0idgpt-3-3M-reasoning/  trained 3.04M model, 2,000-line corpus, metrics
+models/v0idgpt-3-3M-reasoning/  trained 3.04M model, curated corpus, metrics
 dataset.json        the original model's training dataset (as exported)
 bundle.json         the original model's standalone bundle (as exported)
 scripts/             reproducible dataset generation and training/export scripts

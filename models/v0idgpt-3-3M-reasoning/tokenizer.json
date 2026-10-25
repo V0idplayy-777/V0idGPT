@@ -1,7 +1,7 @@
 {
   "level": "char",
   "vocabSize": 71,
-  "sequenceLength": 48,
+  "sequenceLength": 128,
   "padToken": "<pad>",
   "eosToken": "\\n",
   "normalization": "lowercase ASCII",

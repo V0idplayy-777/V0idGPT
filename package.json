@@ -11,7 +11,7 @@
     "verify-model-2": "node models/v0idgpt-2-40k/verify.mjs",
     "verify-model-3": "node models/v0idgpt-3-3M-reasoning/verify.mjs",
     "dataset-model-3": "python3 scripts/generate_3m_dataset.py",
-    "train-model-3": "python3 scripts/train_3m_model.py --epochs 6 --batch-size 24"
+    "train-model-3": "python3 scripts/train_3m_model.py --epochs 20 --batch-size 24"
   },
   "license": "Apache-2.0"
 }
