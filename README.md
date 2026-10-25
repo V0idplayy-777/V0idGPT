@@ -28,7 +28,9 @@ The app conditions the model the way it was trained (`q: <your message>? a:` plu
 Verify the model from the command line any time:
 
 ```bash
-npm run verify-model     # → should print OK
+npm run verify-model       # original 6K model
+npm run verify-model-2     # 40K model
+npm run verify-model-3     # trained 3.04M reasoning model
 ```
 
 ### Honest expectations
@@ -43,6 +45,9 @@ Switch models in **Settings → Model** or from the model menu in the header. Th
 |---|---|---|---|---|
 | V0idGPT | 6,434 | character-level, 34 tokens | 64 chars | `javascript/` |
 | v0idgpt-2-40k | 41,824 | BPE subword, 512 tokens | 16 tokens | `models/v0idgpt-2-40k/` |
+| **v0idgpt-3-3M-reasoning** | **3,038,759** | character-level, 71 tokens | 48 chars | `models/v0idgpt-3-3M-reasoning/` |
+
+`v0idgpt-3-3M-reasoning` is the default model for new users. It is an 800-unit LSTM trained end-to-end on the checked-in 2,000-line `dataset.jsonl`, covering conversation, concise reasoning, arithmetic, planning, writing, knowledge, and safety. Its completed training metrics and reproducible data/training scripts are included. As a very small language model, it can still make mistakes; see its package README for honest limitations.
 
 Each model remembers its own Temperature / Top-K / length, and **Settings → Model → Preset** has one-tap Coherent / Balanced / Wild settings tuned per model. Under any reply, the token icon shows the raw output token by token — tap a token to see the alternatives the model considered and what the sampler actually drew. Token views live in memory only, so they're available for replies generated in the current session.
 
@@ -69,8 +74,11 @@ js/app.js           chat logic, streaming sampler, persistence
 vendor/             Lucide icons (ISC licensed, vendored for offline use)
 server.mjs          zero-dependency static server
 javascript/         the original, untouched NeuronForge model export
-dataset.json        the model's training dataset (as exported)
-bundle.json         the model's standalone bundle (as exported)
+models/              additional standalone model packages
+models/v0idgpt-3-3M-reasoning/  trained 3.04M model, 2,000-line corpus, metrics
+dataset.json        the original model's training dataset (as exported)
+bundle.json         the original model's standalone bundle (as exported)
+scripts/             reproducible dataset generation and training/export scripts
 ```
 
 ## Icons

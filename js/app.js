@@ -29,8 +29,21 @@ const MODELS = {
     },
     load: () => import("../models/v0idgpt-2-40k/model.mjs"),
   },
+  "v0idgpt-3-3M-reasoning": {
+    label: "v0idgpt-3-3M-reasoning",
+    blurb: "3.04M params · conversational reasoning",
+    unit: "chars",
+    unitLong: "characters",
+    prompt: "chat",
+    presets: {
+      coherent: { temperature: 0.2, topK: 4, maxTokens: 100 },
+      balanced: { temperature: 0.45, topK: 8, maxTokens: 140 },
+      wild: { temperature: 0.8, topK: 16, maxTokens: 180 },
+    },
+    load: () => import("../models/v0idgpt-3-3M-reasoning/model.mjs"),
+  },
 };
-const DEFAULT_MODEL = "v0idgpt";
+const DEFAULT_MODEL = "v0idgpt-3-3M-reasoning";
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -582,6 +595,13 @@ function buildPrompt(chat) {
   if (MODELS[modelId].prompt === "plain") {
     const last = [...chat.messages].reverse().find((m) => m.role === "user");
     return last ? last.content.replace(/\s+/g, " ").trim().toLowerCase() : "";
+  }
+  if (MODELS[modelId].prompt === "chat") {
+    const last = [...chat.messages].reverse().find((m) => m.role === "user");
+    const text = last ? last.content.replace(/\s+/g, " ").trim().toLowerCase() : "";
+    // This format exactly matches the new model's training corpus. Its bounded
+    // recurrent context keeps the useful tail automatically.
+    return `user: ${text}\nassistant:`;
   }
   let s = "";
   for (const m of chat.messages) {
