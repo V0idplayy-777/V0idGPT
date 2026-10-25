@@ -1,0 +1,42 @@
+{
+  "epochs": 6,
+  "batchSize": 24,
+  "sequenceLength": 48,
+  "characterTokens": 318453,
+  "windows": 6634,
+  "history": [
+    {
+      "epoch": 1,
+      "trainLoss": 1.283245,
+      "validationLoss": 0.598277
+    },
+    {
+      "epoch": 2,
+      "trainLoss": 0.387391,
+      "validationLoss": 0.35414
+    },
+    {
+      "epoch": 3,
+      "trainLoss": 0.269455,
+      "validationLoss": 0.31241
+    },
+    {
+      "epoch": 4,
+      "trainLoss": 0.238677,
+      "validationLoss": 0.306062
+    },
+    {
+      "epoch": 5,
+      "trainLoss": 0.223316,
+      "validationLoss": 0.298001
+    },
+    {
+      "epoch": 6,
+      "trainLoss": 0.215852,
+      "validationLoss": 0.292305
+    }
+  ],
+  "elapsedSeconds": 360.82,
+  "parameters": 3038759,
+  "examples": 2000
+}

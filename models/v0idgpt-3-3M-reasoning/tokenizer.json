@@ -1,0 +1,9 @@
+{
+  "level": "char",
+  "vocabSize": 71,
+  "sequenceLength": 48,
+  "padToken": "<pad>",
+  "eosToken": "\\n",
+  "normalization": "lowercase ASCII",
+  "note": "The authoritative ordered token list is embedded in bundle.mjs."
+}
