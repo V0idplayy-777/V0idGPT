@@ -10,40 +10,27 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Diag + fetch
+      - name: Fetch + repack
         continue-on-error: true
         run: |
-          mkdir -p stage-out
-          exec > >(tee -a stage-out/log.txt) 2>&1
-          set -x
-          python3 -VV
-          echo "--- HF reachability ---"
-          curl -sIL --max-time 30 https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/main/config.json | head -25
+          mkdir -p stage stage-out
           BASE=https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/main
-          mkdir -p stage
           for f in config.json tokenizer.json tokenizer_config.json generation_config.json model.safetensors; do
-            echo "downloading $f"
-            curl -sL --retry 3 --max-time 900 -o stage/$f "$BASE/$f" || echo "FAILED $f"
+            curl -sL --retry 3 --max-time 900 -o stage/$f "$BASE/$f"
           done
-          ls -la stage
-      - name: Repack
-        continue-on-error: true
-        run: |
-          exec > >(tee -a stage-out/log.txt) 2>&1
-          pip install --quiet numpy safetensors
-          python3 - <<'PY'
+          pip install --quiet numpy safetensors 2>&1 | tail -2
+          cat > repack.py <<'PY'
           import json, os, struct, numpy as np
+          from safetensors import safe_open
           os.makedirs("stage/chunks", exist_ok=True)
           with open("stage/model.safetensors","rb") as f:
               n = struct.unpack("<Q", f.read(8))[0]
               hdr = json.loads(f.read(n))
-          from safetensors import safe_open
           names = sorted(k for k in hdr if k != "__metadata__")
           CHUNK = 45*1024*1024
           tensors, curbuf, cidx = [], bytearray(), 0
           def flush(buf, idx):
-              if not buf: return
-              open(f"stage/chunks/w_{idx:03d}.bin","wb").write(bytes(buf))
+              if buf: open(f"stage/chunks/w_{idx:03d}.bin","wb").write(bytes(buf))
           with safe_open("stage/model.safetensors", framework="numpy") as f:
               for name in names:
                   a = f.get_tensor(name)
@@ -58,18 +45,21 @@ jobs:
           json.dump({"arch":"smollm2","source":"HuggingFaceTB/SmolLM2-135M-Instruct",
                      "config":cfg,"tensors":tensors,"chunk_size":CHUNK},
                     open("stage/manifest.json","w"), indent=1)
-          print("params:", sum(int(np.prod(t["shape"])) for t in tensors))
-          print(json.dumps(cfg))
+          print("PARAMS:", sum(int(np.prod(t["shape"])) for t in tensors))
+          print("CONFIG:", json.dumps(cfg))
+          print("NCHUNKS:", cidx+1)
           PY
-          cp stage/manifest.json stage/config.json stage/tokenizer.json stage/tokenizer_config.json stage/generation_config.json stage-out/
+          python3 repack.py > stage-out/log.txt 2>&1
+          tail -5 stage-out/log.txt
+          cp stage/manifest.json stage/config.json stage/tokenizer.json stage/tokenizer_config.json stage/generation_config.json stage-out/ 2>/dev/null
           cp -r stage/chunks stage-out/
-          du -sh stage-out/* | tail -8
+          ls -la stage-out | head
       - name: Commit whatever we have
         if: always()
         run: |
           git config user.name "arena-agent"; git config user.email "agent@arena.ai"
-          git checkout --orphan weights-tmp2
+          git checkout --orphan weights-tmp3
           git rm -rf --cached . >/dev/null 2>&1 || true
           git add -A stage-out
           git commit -q -m "staged weights run" || true
-          git push -f origin weights-tmp2 || echo "PUSH FAILED"
+          git push -f origin weights-tmp3 || echo "PUSH FAILED"
