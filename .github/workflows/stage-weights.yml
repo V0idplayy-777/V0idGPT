@@ -1,0 +1,13 @@
+name: stage-weights
+on:
+  push:
+    branches: ["arena/**"]
+    paths: [".github/workflows/stage-weights.yml"]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe HuggingFace reachability
+        run: |
+          curl -sIL --max-time 25 https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/main/config.json | head -20
