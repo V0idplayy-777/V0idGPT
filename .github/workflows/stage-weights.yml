@@ -11,55 +11,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch + repack
-        continue-on-error: true
         run: |
+          set -e
           mkdir -p stage stage-out
           BASE=https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/main
           for f in config.json tokenizer.json tokenizer_config.json generation_config.json model.safetensors; do
             curl -sL --retry 3 --max-time 900 -o stage/$f "$BASE/$f"
           done
-          pip install --quiet numpy safetensors 2>&1 | tail -2
           cat > repack.py <<'PY'
-          import json, os, struct, numpy as np
-          from safetensors import safe_open
+          import json, os, struct
           os.makedirs("stage/chunks", exist_ok=True)
-          with open("stage/model.safetensors","rb") as f:
-              n = struct.unpack("<Q", f.read(8))[0]
-              hdr = json.loads(f.read(n))
+          fh = open("stage/model.safetensors","rb")
+          n = struct.unpack("<Q", fh.read(8))[0]
+          hdr = json.loads(fh.read(n))
+          data_start = 8 + n
           names = sorted(k for k in hdr if k != "__metadata__")
           CHUNK = 45*1024*1024
           tensors, curbuf, cidx = [], bytearray(), 0
           def flush(buf, idx):
               if buf: open(f"stage/chunks/w_{idx:03d}.bin","wb").write(bytes(buf))
-          with safe_open("stage/model.safetensors", framework="numpy") as f:
-              for name in names:
-                  a = f.get_tensor(name)
-                  raw = a.tobytes()
-                  if len(curbuf) + len(raw) > CHUNK:
-                      flush(curbuf, cidx); curbuf = bytearray(); cidx += 1
-                  off = len(curbuf); curbuf += raw
-                  tensors.append({"name": name, "dtype": str(a.dtype), "shape": list(a.shape),
-                                  "chunk": cidx, "offset": off, "nbytes": len(raw)})
+          for name in names:
+              info = hdr[name]
+              a, b = info["data_offsets"]
+              fh.seek(data_start + a)
+              raw = fh.read(b - a)
+              if len(curbuf) + len(raw) > CHUNK:
+                  flush(curbuf, cidx); curbuf = bytearray(); cidx += 1
+              off = len(curbuf); curbuf += raw
+              tensors.append({"name": name, "dtype": info["dtype"], "shape": info["shape"],
+                              "chunk": cidx, "offset": off, "nbytes": len(raw)})
           flush(curbuf, cidx)
           cfg = json.load(open("stage/config.json"))
+          np_total = 1
+          total = 0
+          for t in tensors:
+              c = 1
+              for d in t["shape"]: c *= d
+              total += c
           json.dump({"arch":"smollm2","source":"HuggingFaceTB/SmolLM2-135M-Instruct",
-                     "config":cfg,"tensors":tensors,"chunk_size":CHUNK},
+                     "config":cfg,"tensors":tensors,"chunk_size":CHUNK,"n_params":total},
                     open("stage/manifest.json","w"), indent=1)
-          print("PARAMS:", sum(int(np.prod(t["shape"])) for t in tensors))
+          print("PARAMS:", total)
           print("CONFIG:", json.dumps(cfg))
           print("NCHUNKS:", cidx+1)
+          print("DTYPES:", sorted({t["dtype"] for t in tensors}))
           PY
-          python3 repack.py > stage-out/log.txt 2>&1
-          tail -5 stage-out/log.txt
-          cp stage/manifest.json stage/config.json stage/tokenizer.json stage/tokenizer_config.json stage/generation_config.json stage-out/ 2>/dev/null
+          python3 repack.py | tee stage-out/log.txt
+          cp stage/manifest.json stage/config.json stage/tokenizer.json stage/tokenizer_config.json stage/generation_config.json stage-out/
           cp -r stage/chunks stage-out/
-          ls -la stage-out | head
-      - name: Commit whatever we have
+          du -sh stage-out
+      - name: Commit
         if: always()
         run: |
           git config user.name "arena-agent"; git config user.email "agent@arena.ai"
-          git checkout --orphan weights-tmp3
+          git checkout --orphan weights-tmp4
           git rm -rf --cached . >/dev/null 2>&1 || true
           git add -A stage-out
           git commit -q -m "staged weights run" || true
-          git push -f origin weights-tmp3 || echo "PUSH FAILED"
+          git push -f origin weights-tmp4 || echo "PUSH FAILED"
