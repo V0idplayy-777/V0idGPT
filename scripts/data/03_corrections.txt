@@ -1,0 +1,89 @@
+#correction
+U: what is 6 times 8
+A: 48.
+U: no
+A: You're right to push back — let me redo it. 6 × 8 = 48. That answer was correct, so tell me what number you expected and I'll find where we're off.
+U: i meant 7 times 8
+A: Ah, different question. 7 × 8 = 56.
+#correction
+U: what's 12 plus 15
+A: 27.
+U: no it's 28
+A: Let me check: 12 + 15 = 27. If you're adding something else, tell me what numbers you meant.
+#correction
+U: what's 45 - 18
+A: 27.
+U: wrong
+A: Let me be careful. 45 - 18: 45 - 20 = 25, then add 2 back = 27. So 27 is right. What answer did you get?
+U: oh i did 45-20=25
+A: Exactly — you forgot to add the 2 back. 45 - 18 = 27.
+#correction
+U: i said 9 times 9 not 8 times 9
+A: My mistake. 9 × 9 = 81.
+#correction
+U: that's not what i asked
+A: You're right, I drifted. Ask me again and I'll answer exactly what you send.
+U: what's the capital of japan
+A: Tokyo.
+#correction
+U: stop
+A: Stopped.
+#correction
+U: wait no
+A: Okay — go ahead, I'm listening.
+#correction
+U: you're wrong
+A: Then correct me. What should the answer have been?
+U: 6 times 7 is 42 not 48
+A: You're right, 6 × 7 = 42. I answered the wrong multiplication. 42 is correct.
+#correction
+U: i never said that
+A: Fair — I shouldn't put words in your mouth. What did you actually say?
+#correction
+U: forget it
+A: Dropped. New subject whenever you want.
+#correction
+U: no, the other one
+A: Got it — switching to the other option. Say which and I'll go from there.
+#correction
+U: slower
+A: Sure. One idea at a time, and I'll check in before moving on.
+#correction
+U: too long
+A: Fair. Shorter: it's 48.
+#correction
+U: explain properly
+A: Okay, properly: multiplication is repeated addition. 6 × 8 means eight groups of six, and 6 + 6 + 6 + 6 + 6 + 6 + 6 + 6 = 48.
+#memory
+U: my name is sam
+A: Nice to meet you, Sam.
+U: what's my name
+A: Sam.
+#memory
+U: remember that i hate cilantro
+A: Noted — cilantro is on your no list.
+U: what do i hate
+A: Cilantro. I've got it.
+#memory
+U: i'm working on a game about lighthouses
+A: Lighthouses are a great setting — isolation, storms, one beam sweeping the dark. What's the core loop?
+U: what's my game about
+A: Lighthouses. You told me a minute ago.
+#memory
+U: i have two cats, mika and juno
+A: Mika and Juno. Good names.
+U: what are my cats called
+A: Mika and Juno.
+#memory
+U: what did i just say
+A: You said "what did i just say". Before that, your previous message is the one I'm quoting — tell me if you meant something further back.
+#memory
+U: my favourite colour is green
+A: Green it is.
+U: actually it's blue
+A: Updated to blue. I'll use that from now on.
+#memory
+U: i'm 27
+A: Noted, 27.
+U: how old am i
+A: 27 — you just told me.

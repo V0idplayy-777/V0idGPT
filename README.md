@@ -1,8 +1,8 @@
 # V0idGPT
 
-A pixel-faithful, production-ready recreation of the ChatGPT web interface — powered **entirely in your browser** by the exact V0idGPT neural model bundled in this repository (`javascript/`). There is no backend, no API key, and no other AI: every reply is generated locally, character by character, by the included NeuronForge model.
+A pixel-faithful, production-ready recreation of the ChatGPT web interface — powered **entirely in your browser**. There is no backend, no API key, and no other AI: every reply is generated token by token from weights that ship in this repository.
 
-![stack](https://img.shields.io/badge/model-NeuronForge%20V0idGPT-black) ![runtime](https://img.shields.io/badge/inference-100%25%20in--browser-black) ![deps](https://img.shields.io/badge/dependencies-zero-black)
+![stack](https://img.shields.io/badge/model-v0idgpt--4--135M-black) ![params](https://img.shields.io/badge/parameters-134%2C515%2C008-black) ![runtime](https://img.shields.io/badge/inference-100%25%20in--browser-black) ![deps](https://img.shields.io/badge/dependencies-zero-black)
 
 ## Run it
 
@@ -13,45 +13,57 @@ node server.mjs          # → http://localhost:8000
 
 Any static file server works too (`python3 -m http.server`, `npx serve`, …), as long as `.mjs` files are served with a JavaScript MIME type. ES modules require `http://` — opening `index.html` from `file://` will not work.
 
-## The model (used exactly as exported)
+## The default model: v0idgpt-4-135M
 
 | | |
 |---|---|
-| Architecture | embedding → 4-head causal attention → dense → softmax |
-| Parameters | 6,434 |
-| Tokenizer | character-level, 34 tokens, 64-character context |
-| Runtime | NeuronForge standalone runtime v1.3.0 (`javascript/runtime.mjs`) |
-| Training format | `q: …? a: …` conversations (see `dataset.json`) |
+| Parameters | **134,515,008** (measured, and asserted by the verifier) |
+| Architecture | 30-layer Llama transformer: RMSNorm, grouped-query attention (9 query / 3 KV heads), SwiGLU, RoPE θ=100000, tied embeddings |
+| Tokenizer | byte-level **BPE, 49,152 subword tokens** (`models/v0idgpt-4-135M/tokenizer.json`) |
+| Context | 8,192 positions supported; the app uses 4,096 by default |
+| Weights | `model.bin` — int4 (group 64, fp16 scales) + int8 embeddings, ≈85 MB, fetched once and cached |
+| Runtime | WebGPU compute shaders, with a bit-exact CPU fallback (`javascript/llm/`) |
+| Base | fine-tuned from SmolLM2-135M-Instruct (Apache-2.0) on this repo's corpus |
 
-Each model uses its own training prompt format and tokenizer. The default 3M model is trained on recent `user:` / `assistant:` turns, uses a 128-character prompt window, and streams each next character from the model's probability distribution until its end-of-sequence token (`\n`). Its browser decoder carries the LSTM state forward between characters instead of recomputing the full prompt every time. No greeting or answer lookup runs at inference time. **Settings → Model → Verify** checks the exported model weights and runtime.
-
-Verify the model from the command line any time:
+It is a real transformer, not a lookup table: the chat log is encoded with the BPE tokenizer into a
+ChatML prompt, the weights are quantised in the browser and run through WebGPU with a KV cache, and
+each token is sampled from the resulting distribution (temperature / top-K / repetition penalty, all
+adjustable in Settings). On load the app cross-checks the GPU kernels against the CPU reference
+implementation and silently falls back if they disagree, so you are never shown wrong text without
+knowing.
 
 ```bash
-npm run verify-model       # original 6K model
-npm run verify-model-2     # 40K model
-npm run verify-model-3     # trained 3.04M reasoning model
+node models/v0idgpt-4-135M/verify.mjs   # params, tokenizer ids, reference logits, greedy decode
 ```
+
+See [`models/v0idgpt-4-135M/README.md`](models/v0idgpt-4-135M/README.md) for the training recipe, the
+dataset, quantisation numbers, and an honest list of what a 135M model can and cannot do.
 
 ### Honest expectations
 
-The default 3M model generates replies live from its trained neural weights; the app does not route prompts to pre-written answers. It now has a balanced, non-duplicated training set, answer-focused training, recent-turn context, and incremental decoding. It is still only 3M parameters and character-level, so it is not comparable to a modern large assistant and can still misunderstand prompts or get facts and arithmetic wrong. Use it for lightweight conversation and experiments, not high-stakes decisions. The older 6K model remains much more limited; its small corpus often produces fragmentary text.
+This model is fluent, keeps the thread of a conversation, answers small-arithmetic questions
+correctly, and changes tone when asked. It is still 135 million parameters: world knowledge is
+shallow, multi-step reasoning is unreliable, and it will confidently invent specifics. It has no
+memory across page loads and no tools. Every reply comes from the weights — nothing is pre-written
+and no request ever leaves the browser.
 
-## Models
+### Earlier models
 
-Switch models in **Settings → Model** or from the model menu in the header. The choice is remembered.
+These remain selectable in **Settings → Model** for comparison, and each one is a genuine
+from-scratch model trained inside this repository:
 
 | Model | Params | Tokenizer | Context | Folder |
 |---|---|---|---|---|
-| V0idGPT | 6,434 | character-level, 34 tokens | 64 chars | `javascript/` |
+| **v0idgpt-4-135M** (default) | **134,515,008** | BPE, 49,152 tokens | 8,192 tokens | `models/v0idgpt-4-135M/` |
+| v0idgpt-3-3M-reasoning | 3,038,759 | character-level, 71 tokens | 128 chars | `models/v0idgpt-3-3M-reasoning/` |
 | v0idgpt-2-40k | 41,824 | BPE subword, 512 tokens | 16 tokens | `models/v0idgpt-2-40k/` |
-| **v0idgpt-3-3M-reasoning** | **3,038,759** | character-level, 71 tokens | 128 chars | `models/v0idgpt-3-3M-reasoning/` |
+| V0idGPT | 6,434 | character-level, 34 tokens | 64 chars | `javascript/` |
 
-`v0idgpt-3-3M-reasoning` is the default model for new users. It is an 800-unit LSTM trained with assistant-only next-character loss on a reproducible, balanced corpus of conversational, factual, reasoning, arithmetic, planning, writing, and safety examples. The trainer, corpus generator, and metrics are checked in. Its package README documents the model's limits.
+The 3M and smaller models stream one character at a time from their own trained weights; they are
+demo-scale and frequently misunderstand prompts or get arithmetic wrong, which is exactly why the
+135M transformer is the default.
 
 Each model remembers its own Temperature / Top-K / length, and **Settings → Model → Preset** has one-tap Coherent / Balanced / Wild settings tuned per model. Under any reply, the token icon shows the raw output token by token — tap a token to see the alternatives the model considered and what the sampler actually drew. Token views live in memory only, so they're available for replies generated in the current session.
-
-To add another export, drop its `javascript/` folder into `models/<name>/` and add an entry to `MODELS` at the top of `js/app.js`.
 
 ## Features
 
@@ -75,7 +87,9 @@ vendor/             Lucide icons (ISC licensed, vendored for offline use)
 server.mjs          zero-dependency static server
 javascript/         the original, untouched NeuronForge model export
 models/              additional standalone model packages
+models/v0idgpt-4-135M/  the 135M transformer: model.bin, tokenizer, verifier, model card
 models/v0idgpt-3-3M-reasoning/  trained 3.04M model, curated corpus, metrics
+javascript/llm/     BPE tokenizer + WebGPU / CPU transformer engines
 dataset.json        the original model's training dataset (as exported)
 bundle.json         the original model's standalone bundle (as exported)
 scripts/             reproducible dataset generation and training/export scripts

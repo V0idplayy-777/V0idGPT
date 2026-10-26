@@ -2,7 +2,7 @@
   "name": "v0idgpt-app",
   "version": "1.0.0",
   "private": true,
-  "description": "V0idGPT — a ChatGPT-style interface powered entirely in the browser by the bundled NeuronForge V0idGPT model.",
+  "description": "V0idGPT \u2014 a ChatGPT-style interface powered entirely in the browser by the bundled v0idgpt-4-135M transformer (WebGPU).",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
@@ -11,7 +11,13 @@
     "verify-model-2": "node models/v0idgpt-2-40k/verify.mjs",
     "verify-model-3": "node models/v0idgpt-3-3M-reasoning/verify.mjs",
     "dataset-model-3": "python3 scripts/generate_3m_dataset.py",
-    "train-model-3": "python3 scripts/train_3m_model.py --epochs 20 --batch-size 24"
+    "train-model-3": "python3 scripts/train_3m_model.py --epochs 20 --batch-size 24",
+    "verify-model-4": "node models/v0idgpt-4-135M/verify.mjs",
+    "dataset-model-4": "python3 scripts/gen_dataset.py",
+    "train-model-4": "python3 scripts/train_sft.py --base /path/to/smollm2-135m --epochs 2 --batch-size 4 --accum 4 --lr 2.5e-4",
+    "export-model-4": "python3 scripts/export_model.py --ckpt /path/to/ckpt/final.pt --out models/v0idgpt-4-135M/model.bin --embed-bits 8",
+    "reference-model-4": "python3 scripts/reference_logits.py --bin models/v0idgpt-4-135M/model.bin --out models/v0idgpt-4-135M/reference.json",
+    "check-tokenizer": "node scripts/verify_tokenizer.mjs models/v0idgpt-4-135M/tokenizer.json /tmp/tok_ref.json"
   },
   "license": "Apache-2.0"
 }

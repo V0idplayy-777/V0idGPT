@@ -3,6 +3,20 @@
    in this browser, by the bundled NeuronForge V0idGPT model
    (javascript/model.mjs) — there is no backend and no other AI.    */
 const MODELS = {
+  "v0idgpt-4-135M": {
+    label: "v0idgpt-4-135M",
+    blurb: "134.5M params · WebGPU transformer · 8K context",
+    unit: "tokens",
+    unitLong: "tokens",
+    engine: "llm",
+    prompt: "chatml",
+    presets: {
+      coherent: { temperature: 0.2, topK: 20, maxTokens: 160 },
+      balanced: { temperature: 0.55, topK: 40, maxTokens: 220 },
+      wild: { temperature: 0.9, topK: 80, maxTokens: 300 },
+    },
+    load: () => import("../models/v0idgpt-4-135M/model.mjs"),
+  },
   "v0idgpt": {
     label: "V0idGPT",
     blurb: "6.4K params · character-level",
@@ -43,7 +57,7 @@ const MODELS = {
     load: () => import("../models/v0idgpt-3-3M-reasoning/model.mjs"),
   },
 };
-const DEFAULT_MODEL = "v0idgpt-3-3M-reasoning";
+const DEFAULT_MODEL = "v0idgpt-4-135M";
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -727,7 +741,8 @@ async function runGeneration() {
   let shown = "";
   const paint = (raw) => {
     shown = settings.stream ? raw : shown;
-    body.textContent = settings.tidy ? polish(raw) : raw;
+    const tidy = settings.tidy && MODELS[modelId].engine !== "llm";
+    body.textContent = tidy ? polish(raw) : raw;
     if (settings.stream && !ctrl.stopped) body.appendChild(caret);
     if (stickToBottom) scrollToBottom(false);
   };
@@ -735,6 +750,42 @@ async function runGeneration() {
   let raw = "";
   const steps = [];
   const traceMeta = { model: modelId, temperature: settings.temperature, topK: settings.topK };
+  if (MODELS[modelId].engine === "llm") {
+    try {
+      const history = chat.messages
+        .filter((m) => !m.notice && m.content && (m.role === "user" || m.role === "assistant"))
+        .slice(0, -1);   // drop the empty placeholder we just pushed
+      const res = await model.chat(history, {
+        temperature: settings.temperature,
+        topK: settings.topK,
+        maxTokens: settings.maxTokens,
+        signal: { get aborted() { return ctrl.stopped; } },
+        onDelta: (d, full) => paint(full),
+      });
+      raw = res.text;
+    } catch (err) {
+      console.error(err);
+      toast(`Generation failed: ${err.message}`, { icon: "circle-alert" });
+      raw = "";
+    }
+    generating = null;
+    setComposerGenerating(false);
+    placeholder.pending = false;
+    placeholder.stopped = ctrl.stopped || undefined;
+    const finalText = (raw || "").trim();
+    if (finalText) {
+      placeholder.content = finalText;
+    } else {
+      placeholder.notice = true;
+      placeholder.content = ctrl.stopped
+        ? `Generation was stopped before ${MODELS[modelId].label} produced any text.`
+        : `${MODELS[modelId].label} produced no text — try Regenerate or raise the temperature in Settings → Model.`;
+    }
+    chat.updatedAt = Date.now();
+    saveChats(); renderChatList(); renderThread(true);
+    $("#composerInput").focus();
+    return;
+  }
   try {
     await sleep(model.createGenerationSession ? 60 : 280); // skip most of the artificial delay on the fast decoder
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -1064,7 +1115,7 @@ async function runVerify() {
     const passed = report.checks.filter((c) => c.status === "pass").length;
     box.className = "verify-result " + (report.ok ? "ok" : "fail");
     box.innerHTML = report.ok
-      ? `<b>✓ Model verified.</b> All ${passed} checks passed — the weights in your browser match NeuronForge's reference exactly (runtime v${esc(report.runtimeVersion)}).`
+      ? `<b>✓ Model verified.</b> All ${passed} checks passed — the weights in your browser reproduce the trainer's reference logits, and every kernel matches (runtime ${esc(report.runtimeVersion)}).`
       : `<b>Verification reported issues.</b> ${report.checks.filter((c) => c.status !== "pass").map((c) => esc(c.name + ": " + c.detail)).join("; ")}`;
   } catch (err) {
     box.className = "verify-result fail";
@@ -1173,6 +1224,18 @@ async function loadModelById(id, onStage = () => {}) {
     const mod = await MODELS[id].load();
     onStage(60, `Building ${MODELS[id].label}…`);
     await sleep(0);
+    if (MODELS[id].engine === "llm") {
+      const loaded = await mod.loadModel({
+        onProgress: (p) => {
+          if (p.stage === "weights") onStage(25 + p.fraction * 60, `Downloading ${MODELS[id].label}… ${Math.round(p.fraction * 100)}%`);
+          else if (p.stage === "build") onStage(88, `Warming up ${MODELS[id].label}…`);
+        },
+      });
+      if (!loaded.chat) throw new Error("Model failed to initialise");
+      loadedModels[id] = loaded;
+      onStage(100, `${MODELS[id].label} ready`);
+      return loadedModels[id];
+    }
     const loaded = await mod.loadModel();
     onStage(85, "Checking the model…");
     await sleep(0);
@@ -1239,6 +1302,29 @@ function fillModelInfo() {
   const info = model.info;
   const unit = MODELS[modelId].unit;
   const params = info.paramCount.toLocaleString();
+  if (MODELS[modelId].engine === "llm") {
+    applyModelLabels();
+    renderModelPickers();
+    const backend = info.backend === "webgpu" ? "WebGPU" : "CPU";
+    $("#modelSpecs").innerHTML = `
+      <div class="spec"><b>${params}</b><span>parameters</span></div>
+      <div class="spec"><b>${info.vocabSize.toLocaleString()}</b><span>BPE tokens</span></div>
+      <div class="spec"><b>${info.contextSize.toLocaleString()}</b><span>context window</span></div>
+      <div class="spec"><b>${backend}</b><span>backend</span></div>`;
+    $("#modelMenuSub").textContent = `Transformer · ${params} params · runs locally`;
+    $("#modelInfoCard").innerHTML = `
+      <div class="mi-title"><i data-lucide="cpu"></i>${esc(info.name)} — the exact bundled model</div>
+      <div class="mi-row"><span>Architecture</span><b>30 Llama blocks · GQA · SwiGLU · RoPE</b></div>
+      <div class="mi-row"><span>Parameters</span><b>${params}</b></div>
+      <div class="mi-row"><span>Tokenizer</span><b>byte-level BPE · ${info.vocabSize.toLocaleString()} tokens · ${info.contextSize.toLocaleString()}-token context</b></div>
+      <div class="mi-row"><span>Weights</span><b>${esc(info.quant)}</b></div>
+      <div class="mi-row"><span>Base model</span><b>${esc(info.base)}</b></div>
+      <div class="mi-row"><span>Where it runs</span><b>100% in your browser (${backend})</b></div>
+      ${info.gpuNote ? `<div class="mi-row"><span>Note</span><b>${esc(info.gpuNote)}</b></div>` : ""}`;
+    $("#modelStatusText").textContent = "Ready · runs locally";
+    $("#modelStatusDot").className = "status-dot ok";
+    return;
+  }
   const layers = info.layers.map((l) => l.type).join(" → ");
   applyModelLabels();
   renderModelPickers();

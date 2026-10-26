@@ -1,0 +1,112 @@
+{
+  "model": "v0idgpt-4-135M",
+  "params": 134515008,
+  "checkpoint": "latest.pt",
+  "step": 90,
+  "perplexity": {
+    "fp32": {
+      "ppl": 1.2031,
+      "tokens": 3255
+    },
+    "q8_embeddings": {
+      "ppl": 1.239,
+      "tokens": 3255,
+      "delta_vs_fp32_pct": 2.98
+    },
+    "q4_all": {
+      "ppl": 1.2696,
+      "tokens": 3255,
+      "delta_vs_fp32_pct": 5.53
+    }
+  },
+  "evaluated_conversations": 150,
+  "eval_note": "150 conversations / 3255 assistant tokens sampled from the training distribution, not a clean holdout (the corpus is small enough that every conversation has been seen). Absolute perplexity is therefore optimistic; the fp32 -> quantised deltas are the meaningful numbers.",
+  "training": {
+    "hardware": "CPU only, 2 cores, fp32, gradient checkpointing",
+    "base_model": "SmolLM2-135M-Instruct (Apache-2.0)",
+    "stages": [
+      {
+        "stage": "conversational SFT",
+        "data": "dataset.jsonl (8,128 convs / 472k tokens)",
+        "steps": 996,
+        "epochs": 2,
+        "lr": "2.5e-4 cosine, 30 warmup",
+        "optimizer": "AdamW (+foreach)",
+        "final_train_loss": 0.1127,
+        "note": "chunked-base load, full-parameter fine-tune, loss on assistant tokens + <|im_end|>"
+      },
+      {
+        "stage": "arithmetic curriculum",
+        "data": "gen_arithmetic_curriculum.py (3,708 convs)",
+        "steps": 200,
+        "lr": "1.2e-4 cosine",
+        "note": "stopped at 76% when the sandbox OOM-killed the run; checkpoint kept"
+      },
+      {
+        "stage": "rebalance",
+        "data": "40% arithmetic / 60% conversational mix",
+        "steps": 120,
+        "lr": "7e-5",
+        "note": "pure-math pass had made the model answer small talk with numbers"
+      },
+      {
+        "stage": "chat recovery",
+        "data": "non-math conversations only",
+        "steps": 43,
+        "lr": "3e-5",
+        "note": "removed the 'reply with a number' reflex"
+      },
+      {
+        "stage": "fix-ups",
+        "data": "gen_fixups.py (recompute after a wrong answer, borrow subtraction, chat)",
+        "steps": 90,
+        "lr": "2.5e-5",
+        "note": "final weights shipped in model.bin; 104-step run finished but its last checkpoint could not be written (disk full), so step 90 is used"
+      }
+    ],
+    "total_optimizer_steps": 1449,
+    "runtime_minutes": 188
+  },
+  "quality_gate": {
+    "script": "scripts/quality gate in models/v0idgpt-4-135M/README.md",
+    "checks": [
+      {
+        "q": "what is 6 times 8",
+        "a": "48."
+      },
+      {
+        "q": "what's 47 + 38",
+        "a": "85."
+      },
+      {
+        "q": "what's 68 + 57",
+        "a": "125."
+      },
+      {
+        "q": "91 - 47",
+        "a": "44. 91 - 40 = 51, then 51 - 7 = 44."
+      },
+      {
+        "q": "12 times 12",
+        "a": "12 x 12 = 144."
+      },
+      {
+        "q": "what's 8 times 7",
+        "a": "56."
+      },
+      {
+        "q": "how are you",
+        "a": "Good. I'm happy to explain the reasoning, and you can check your own work."
+      },
+      {
+        "q": "what's your name",
+        "a": "I'm v0idgpt - a small model running locally in your browser."
+      },
+      {
+        "q": "(7+9 answered 15) 'no, I said 7 + 9'",
+        "a": "Let me redo it: 7 + 9 = 16. I had that wrong. My mistake."
+      }
+    ],
+    "result": "14/15 checks pass; the miss is terseness on an open-ended follow-up ('Guitar.')"
+  }
+}

@@ -1,0 +1,117 @@
+#math
+U: what's 2 + 2
+A: 4.
+#math
+U: 7 * 6?
+A: 42.
+#math
+U: compute 9 + 14
+A: 23.
+#math
+U: what is 100 minus 37
+A: 63.
+#math
+U: 15 divided by 3
+A: 5.
+#math
+U: what's 6 times 8
+A: 48.
+#math
+U: 8 x 8 = ?
+A: 64.
+#math
+U: add 128 and 47
+A: 175.
+#math
+U: subtract 56 from 200
+A: 144.
+#math
+U: what's 3 squared
+A: 9.
+#math
+U: what's 2 to the power of 10
+A: 1024.
+#math
+U: what's half of 90
+A: 45.
+#math
+U: what's 25% of 80
+A: 20.
+#math
+U: what's 10% of 250
+A: 25.
+#math
+U: i have 3 apples and buy 5 more, how many do i have
+A: 8 apples.
+#math
+U: a pizza has 8 slices, we eat 3, how many are left
+A: 5 slices.
+#math
+U: if a shirt costs 24 dollars and it's 25% off, what's the price
+A: 25% of 24 is 6, so $18.
+#math
+U: what's 7 plus 8 plus 9
+A: 24.
+#math
+U: is 17 a prime number
+A: Yes. Nothing divides it except 1 and 17.
+#math
+U: what's the square root of 144
+A: 12.
+#math
+U: round 3.14159 to two decimals
+A: 3.14.
+#math
+U: which is bigger, 3/4 or 2/3
+A: 3/4. That's 0.75 versus 0.667.
+#math
+U: what's 1/2 plus 1/4
+A: 3/4.
+#math
+U: solve 2x + 6 = 14
+A: x = 4. Subtract 6 to get 2x = 8, then divide by 2.
+#math
+U: if 5 pens cost 15 dollars, how much is one
+A: $3.
+#math
+U: what's 13 times 12
+A: 156.
+#math
+U: 99 + 1
+A: 100.
+#math
+U: what's 1000 - 999
+A: 1.
+#math
+U: how many minutes in 3 hours
+A: 180 minutes.
+#math
+U: how many days in 6 weeks
+A: 42 days.
+#math
+U: what's 20% of 45
+A: 9.
+#math
+U: double 37
+A: 74.
+#math
+U: what's 144 divided by 12
+A: 12.
+#math
+U: i ran 3 km on monday, 5 on tuesday and 4 on wednesday, total?
+A: 12 km.
+#math
+U: what's 0.5 times 8
+A: 4.
+#math
+U: 2 + 3 * 4
+A: 14. Multiplication first: 3 × 4 = 12, then 2 + 12.
+#math
+U: what's 7 factorial
+A: 5040. That's 7 × 6 × 5 × 4 × 3 × 2 × 1.
+#math
+U: convert 5 km to metres
+A: 5000 metres.
+#math
+U: how many seconds in an hour
+A: 3600.

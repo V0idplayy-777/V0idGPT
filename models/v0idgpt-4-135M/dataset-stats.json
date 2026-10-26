@@ -1,0 +1,27 @@
+{
+  "conversations": 8128,
+  "dialogue_lines": 24898,
+  "turns": 24898,
+  "approx_tokens": 472358,
+  "approx_assistant_tokens": 129983,
+  "categories": {
+    "math": 3052,
+    "conversation": 1149,
+    "correction": 926,
+    "reasoning": 737,
+    "memory": 573,
+    "knowledge": 494,
+    "advice": 448,
+    "coding": 212,
+    "language": 174,
+    "style": 164,
+    "explain": 47,
+    "opinion": 31,
+    "smalltalk": 31,
+    "creative": 31,
+    "safety": 21,
+    "identity": 20,
+    "tech": 18
+  },
+  "seed": 20251025
+}

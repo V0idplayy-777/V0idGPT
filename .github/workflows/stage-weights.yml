@@ -1,8 +1,9 @@
-name: stage-weights
+name: fetch-base-weights
+# Manual only: fetches SmolLM2-135M-Instruct from Hugging Face, repacks it into the chunked fp16
+# staging layout (manifest.json + chunks/) and pushes it to a throwaway branch, for environments
+# that cannot reach huggingface.co directly.  Never runs automatically.
 on:
-  push:
-    branches: ["arena/**"]
-    paths: [".github/workflows/stage-weights.yml"]
+  workflow_dispatch:
 jobs:
   stage:
     runs-on: ubuntu-latest
@@ -64,8 +65,8 @@ jobs:
         if: always()
         run: |
           git config user.name "arena-agent"; git config user.email "agent@arena.ai"
-          git checkout --orphan weights-tmp4
+          git checkout --orphan base-weights
           git rm -rf --cached . >/dev/null 2>&1 || true
           git add -A stage-out
           git commit -q -m "staged weights run" || true
-          git push -f origin weights-tmp4 || echo "PUSH FAILED"
+          git push -f origin base-weights || echo "PUSH FAILED"
