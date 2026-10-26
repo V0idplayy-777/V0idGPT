@@ -1,0 +1,1 @@
+{"name": "v0idgpt-4-109M", "version": "1.0.0", "description": "V0idGPT-4 109M-parameter highly conversational model BPE 512 context", "type": "module", "main": "model.mjs", "types": "model.d.mts", "exports": {".": {"types": "./model.d.mts", "default": "./model.mjs"}}, "scripts": {"verify": "node verify.mjs", "example": "node example.mjs"}, "license": "Apache-2.0"}

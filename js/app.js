@@ -42,8 +42,21 @@ const MODELS = {
     },
     load: () => import("../models/v0idgpt-3-3M-reasoning/model.mjs"),
   },
+  "v0idgpt-4-109M": {
+    label: "v0idgpt-4-109M",
+    blurb: "109M params · BPE subword · 256-token context",
+    unit: "tokens",
+    unitLong: "tokens",
+    prompt: "chat",
+    presets: {
+      coherent: { temperature: 0.4, topK: 6, maxTokens: 100 },
+      balanced: { temperature: 0.7, topK: 30, maxTokens: 150 },
+      wild: { temperature: 1.0, topK: 80, maxTokens: 200 },
+    },
+    load: () => import("../models/v0idgpt-4-109M/model.mjs"),
+  },
 };
-const DEFAULT_MODEL = "v0idgpt-3-3M-reasoning";
+const DEFAULT_MODEL = "v0idgpt-4-109M";
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 const $ = (s, r = document) => r.querySelector(s);
